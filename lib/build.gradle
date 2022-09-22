@@ -30,6 +30,7 @@ dependencies {
     implementation("io.vertx:vertx-core")
     testImplementation("io.vertx:vertx-junit5")
     implementation("io.netty:netty-resolver-dns-native-macos:4.1.80.Final:osx-x86_64")
+    implementation 'io.nats:jnats-server-runner:1.0.9'
 
 }
 
