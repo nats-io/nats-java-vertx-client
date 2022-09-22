@@ -32,7 +32,7 @@ public interface NatsStream extends WriteStream<Message> {
             boolean autoAck,
             PushSubscribeOptions so);
 
-    Future<Void> unsubscribe(String subject) throws InterruptedException;
+    Future<Void> unsubscribe(String subject);
 
     Future<PublishAck> publish(Message data, PublishOptions options);
 }

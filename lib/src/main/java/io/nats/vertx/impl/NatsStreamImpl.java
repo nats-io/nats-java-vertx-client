@@ -205,9 +205,8 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> unsubscribe(final String subject) throws InterruptedException {
+    public Future<Void> unsubscribe(final String subject) {
         final Promise<Void> promise = context.promise();
-
         vertx.runOnContext(event -> {
             try {
                 final Subscription subscription = subscriptionMap.get(subject);
