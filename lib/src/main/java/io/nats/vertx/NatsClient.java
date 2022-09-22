@@ -1,20 +1,15 @@
 package io.nats.vertx;
 
 
-import io.nats.client.Connection;
-        import io.nats.client.JetStreamOptions;
-        import io.nats.client.Message;
-import io.nats.client.Options;
-import io.vertx.core.AsyncResult;
-        import io.vertx.core.Future;
-        import io.vertx.core.Handler;
-        import io.vertx.core.Vertx;
-        import io.vertx.core.streams.WriteStream;
+import io.nats.client.*;
+import io.nats.vertx.impl.NatsClientImpl;
+import io.vertx.core.*;
+import io.vertx.core.streams.WriteStream;
 
 public interface NatsClient extends WriteStream<Message> {
 
-    static NatsClient create(Options config) {
-        return new NatsClientImpl( config);
+    static NatsClient create(NatsOptions natsOptions) {
+        return new NatsClientImpl(natsOptions.getNatsBuilder(), natsOptions.getVertx());
     }
 
     Future<Void> connect();
@@ -32,15 +27,20 @@ public interface NatsClient extends WriteStream<Message> {
 
     Future<Void> publish(String subject, String replyTo, String message);
 
+    Future<Void> publish(String subject, String replyTo, byte[] message);
+
     Future<Void> publish(String subject, String message);
+
+    Future<Void> publish(String subject, byte[] message);
 
     void request(Message data, Handler<AsyncResult<Message>> handler);
 
     Future<Message> request(Message data);
 
-    Future<Message> request(String subject, String replyTo, String message);
-
     Future<Message> request(String subject, String message);
+
+    Future<Message> request(String subject, byte[] message);
+
 
     Future<Void> subscribe(String subject, Handler<Message> handler);
 

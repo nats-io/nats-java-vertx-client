@@ -11,21 +11,14 @@ import java.io.IOException;
 
 public interface NatsStream extends WriteStream<Message> {
 
-    static NatsStream create(
-            Options options,
-            Connection connection,
-            Dispatcher dispatcher,
-            JetStreamOptions jetStreamOptions)
-            throws IOException {
-        return new NatsStreamImpl(options, connection, dispatcher, jetStreamOptions);
-    }
-
     @Override
     NatsStream drainHandler(Handler<Void> handler);
 
     Future<PublishAck> publish(Message data);
 
     Future<PublishAck> publish(String subject, String message);
+
+    Future<PublishAck> publish(String subject, byte[] message);
 
     void publish(Message data, Handler<AsyncResult<PublishAck>> handler);
 
@@ -39,7 +32,7 @@ public interface NatsStream extends WriteStream<Message> {
             boolean autoAck,
             PushSubscribeOptions so);
 
-    Future<Void> unsubscribe() throws InterruptedException;
+    Future<Void> unsubscribe(String subject) throws InterruptedException;
 
     Future<PublishAck> publish(Message data, PublishOptions options);
 }
