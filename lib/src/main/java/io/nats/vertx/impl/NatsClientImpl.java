@@ -62,8 +62,7 @@ public class NatsClientImpl implements NatsClient {
             try {
                 connection = Nats.connect(options);
             } catch (Exception e) {
-                connectFuture.fail(e);
-                exceptionHandler.handle(e);
+                handleException(connectFuture, e);
             }
         });
         return this.connectFuture.future();
@@ -77,9 +76,8 @@ public class NatsClientImpl implements NatsClient {
 
                 final JetStream jetStream = connection.jetStream();
                 promise.complete(new NatsStreamImpl(jetStream, context, vertx));
-            } catch (IOException e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+            } catch (Exception e) {
+                handleException(promise, e);
             }
 
         });
@@ -93,9 +91,8 @@ public class NatsClientImpl implements NatsClient {
             try {
                 final JetStream jetStream = connection.jetStream(options);
                 promise.complete(new NatsStreamImpl(jetStream, context, vertx));
-            } catch (IOException e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+            } catch (Exception e) {
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -115,8 +112,7 @@ public class NatsClientImpl implements NatsClient {
                 connection.publish(data);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -131,12 +127,12 @@ public class NatsClientImpl implements NatsClient {
                 promise.complete();
                 handler.handle(promise.future());
             } catch (Exception e) {
-                promise.fail(e);
-                handler.handle(promise.future());
-                exceptionHandler.handle(e);
+                handleExceptionWithHandler(handler, promise, e);
             }
         });
     }
+
+
 
     @Override
     public void end(Handler<AsyncResult<Void>> handler) {
@@ -147,16 +143,14 @@ public class NatsClientImpl implements NatsClient {
                 promise.complete();
                 handler.handle(promise.future());
             } catch (Exception e) {
-                promise.fail(e);
-                handler.handle(promise.future());
-                exceptionHandler.handle(e);
+                handleExceptionWithHandler(handler, promise, e);
             }
         });
     }
 
     @Override
     public WriteStream<Message> setWriteQueueMaxSize(int maxSize) {
-        return null;
+        return this;
     }
 
     @Override
@@ -193,8 +187,7 @@ public class NatsClientImpl implements NatsClient {
                 connection.publish(subject, replyTo, message);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -213,11 +206,22 @@ public class NatsClientImpl implements NatsClient {
                 connection.publish(subject, message);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
+    }
+
+    private void handleException(Promise<?> promise, Exception e) {
+        promise.fail(e);
+        exceptionHandler.handle(e);
+    }
+
+    private void handleExceptionWithHandler(Handler<AsyncResult<Void>> handler,
+                                            Promise<Void> promise, Exception e) {
+        promise.fail(e);
+        handler.handle(promise.future());
+        exceptionHandler.handle(e);
     }
 
     @Override
@@ -245,8 +249,7 @@ public class NatsClientImpl implements NatsClient {
                 final Message message = request.get();
                 event.complete(message);
             } catch (Exception e) {
-                event.fail(e);
-                exceptionHandler.handle(e);
+                handleException(event, e);
             }
         });
     }
@@ -264,8 +267,7 @@ public class NatsClientImpl implements NatsClient {
                 final Message result = request.get();
                 event.complete(result);
             } catch (Exception e) {
-                event.fail(e);
-                exceptionHandler.handle(e);
+                handleException(event, e);
             }
         });
     }
@@ -281,8 +283,7 @@ public class NatsClientImpl implements NatsClient {
                 vertx.runOnContext(event1 -> drainSubscription(handler, subscribe));
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -293,8 +294,12 @@ public class NatsClientImpl implements NatsClient {
             Message message = subscribe.nextMessage(noWait);
             int count = 0;
             while (message!=null) {
-                handler.handle(message);
                 count++;
+                try {
+                    handler.handle(message);
+                } catch (Exception e) {
+                    exceptionHandler.handle(e);
+                }
                 if (count > 10) {
                     vertx.runOnContext(event -> drainSubscription(handler, subscribe));
                     break;
@@ -321,8 +326,7 @@ public class NatsClientImpl implements NatsClient {
                 vertx.runOnContext(event1 -> drainSubscription(handler, subscribe));
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
