@@ -8,7 +8,6 @@ import io.nats.client.impl.NatsMessage;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.streams.WriteStream;
 import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,9 +100,40 @@ public class NatsClientTest {
             natsClientPub.publish(SUBJECT_NAME, (data + i));
         }
 
-        latch.await();
+        latch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
+
+        final CountDownLatch endLatch = new CountDownLatch(2);
+        natsClientPub.end().onSuccess(event -> endLatch.countDown());
+        natsClientSub.end().onSuccess(event -> endLatch.countDown());
+        endLatch.await(3, TimeUnit.SECONDS);
+    }
+
+
+    @Test
+    public void testPubSub100() throws InterruptedException {
+
+        final NatsClient natsClientPub = getNatsClient();
+        final NatsClient natsClientSub = getNatsClient();
+
+
+        final CountDownLatch latch = new CountDownLatch(100);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(200);
+        final String data = "data";
+
+        natsClientSub.subscribe(SUBJECT_NAME, event -> {
+            queue.add(event);
+            latch.countDown();
+        });
+
+        for (int i = 0; i < 100; i++) {
+            natsClientPub.publish(SUBJECT_NAME, (data + i));
+        }
+
+        latch.await(1, TimeUnit.SECONDS);
+
+        assertEquals(100, queue.size());
 
         final CountDownLatch endLatch = new CountDownLatch(2);
         natsClientPub.end().onSuccess(event -> endLatch.countDown());
@@ -135,8 +165,8 @@ public class NatsClientTest {
                     .build();
             natsClientPub.write(message).onSuccess(event -> sendLatch.countDown());
         }
-        sendLatch.await();
-        receiveLatch.await();
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
 
@@ -179,8 +209,8 @@ public class NatsClientTest {
                 }
             });
         }
-        sendLatch.await();
-        receiveLatch.await();
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
 
@@ -215,8 +245,8 @@ public class NatsClientTest {
                     .build();
             natsClientPub.publish(message).onSuccess(event -> sendLatch.countDown());
         }
-        sendLatch.await();
-        receiveLatch.await();
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
 
@@ -256,8 +286,8 @@ public class NatsClientTest {
                 }
             });
         }
-        sendLatch.await();
-        receiveLatch.await();
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
 
@@ -288,7 +318,7 @@ public class NatsClientTest {
             natsClientPub.publish(SUBJECT_NAME, "replyTo", (data + i));
         }
 
-        latch.await();
+        latch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
 
@@ -453,7 +483,7 @@ public class NatsClientTest {
             nc.publish(SUBJECT_NAME, (data + i).getBytes());
         }
 
-        latch.await();
+        latch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
 
@@ -480,119 +510,11 @@ public class NatsClientTest {
             nc.publish(SUBJECT_NAME, (data + i).getBytes());
         }
 
-        latch.await();
+        latch.await(1, TimeUnit.SECONDS);
 
         closeClient(natsClient);
     }
 
-
-    @Test
-    public void testSubJetStreamWithOptions() throws InterruptedException {
-
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream natsStream = getJetStreamWithOptions(natsClient);
-
-        testJetStreamPub(natsClient, natsStream);
-    }
-
-    @Test
-    public void testSubJetStream() throws InterruptedException {
-
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream natsStream = getJetStream(natsClient);
-
-        testJetStreamPub(natsClient, natsStream);
-
-    }
-
-    private void testJetStreamPub(NatsClient natsClient, NatsStream natsStream) throws InterruptedException {
-        final CountDownLatch latch = new CountDownLatch(10);
-        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
-        final String data = "data";
-
-        natsStream.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
-            latch.countDown();
-        }, true, new PushSubscribeOptions.Builder().build());
-
-        for (int i = 0; i < 10; i++) {
-            nc.publish(SUBJECT_NAME, (data + i).getBytes());
-        }
-
-        latch.await();
-
-        assertEquals(10, queue.size());
-
-        closeClient(natsClient);
-    }
-
-    @Test
-    public void testSubJetStreamWithQueueName() throws InterruptedException {
-
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream natsStream = getJetStream(natsClient);
-
-        final CountDownLatch latch = new CountDownLatch(10);
-        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
-        final String data = "data";
-
-        natsStream.subscribe(SUBJECT_NAME, "FOO", event -> {
-            queue.add(event);
-            latch.countDown();
-        }, true, new PushSubscribeOptions.Builder().build());
-
-        for (int i = 0; i < 10; i++) {
-            nc.publish(SUBJECT_NAME, (data + i).getBytes());
-        }
-
-        latch.await();
-
-        assertEquals(10, queue.size());
-
-        closeClient(natsClient);
-    }
-
-    private NatsStream getJetStream(NatsClient natsClient) throws InterruptedException {
-        Future<NatsStream> connect = natsClient.jetStream();
-
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final AtomicReference<NatsStream> stream = new AtomicReference<>();
-        connect.onSuccess(event -> {
-            stream.set(event);
-            latch.countDown();
-        }).onFailure(event -> {
-            error.set(event);
-            latch.countDown();
-        });
-        latch.await();
-        if (error.get() != null) {
-            fail();
-        }
-        return stream.get();
-    }
-
-
-    private NatsStream getJetStreamWithOptions(NatsClient natsClient) throws InterruptedException {
-        final JetStreamOptions options = JetStreamOptions.builder().build();
-        final Future<NatsStream> connect = natsClient.jetStream(options);
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final AtomicReference<NatsStream> stream = new AtomicReference<>();
-        connect.onSuccess(event -> {
-            stream.set(event);
-            latch.countDown();
-        }).onFailure(event -> {
-            error.set(event);
-            latch.countDown();
-        });
-        latch.await();
-        if (error.get() != null) {
-            fail();
-        }
-        return stream.get();
-    }
 
     @Test
     public void testSubWithQueueName() throws InterruptedException {
@@ -613,7 +535,7 @@ public class NatsClientTest {
             nc.publish(SUBJECT_NAME, (data + i).getBytes());
         }
 
-        latch.await();
+        latch.await(1, TimeUnit.SECONDS);
 
         assertEquals(10, queue.size());
         closeClient(natsClient);
@@ -661,7 +583,7 @@ public class NatsClientTest {
             error.set(event);
             latch.countDown();
         });
-        latch.await();
+        latch.await(1, TimeUnit.SECONDS);
         if (error.get() != null) {
             throw new IllegalStateException(error.get());
         }

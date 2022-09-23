@@ -65,8 +65,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.complete();
             }
         } catch (Exception e) {
-            promise.fail(e);
-            exceptionHandler.handle(e);
+            handleException(promise, e);
         }
     }
 
@@ -101,8 +100,7 @@ public class NatsStreamImpl implements NatsStream {
                 PublishAck ack = jetStream.publish(data);
                 promise.complete(ack);
             } catch (Exception e) {
-                promise.fail(e);
-                throw new RuntimeException(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -121,8 +119,7 @@ public class NatsStreamImpl implements NatsStream {
                 final PublishAck ack = jetStream.publish(subject, message);
                 promise.complete(ack);
             } catch (Exception e) {
-                promise.fail(e);
-                throw new RuntimeException(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -136,8 +133,7 @@ public class NatsStreamImpl implements NatsStream {
                 PublishAck ack = jetStream.publish(data);
                 promise.complete(ack);
             } catch (Exception e) {
-                promise.fail(e);
-                throw new RuntimeException(e);
+                handleException(promise, e);
             }
             handler.handle(promise.future());
         });
@@ -166,7 +162,11 @@ public class NatsStreamImpl implements NatsStream {
             Message message = subscribe.nextMessage(noWait);
             int count = 0;
             while (message!=null) {
-                handler.handle(message);
+                try {
+                    handler.handle(message);
+                } catch (Exception ex) {
+                    this.exceptionHandler.handle(ex);
+                }
                 if (autoAck) {
                     message.ack();
                 }
@@ -197,8 +197,7 @@ public class NatsStreamImpl implements NatsStream {
                 vertx.runOnContext(event1 -> drainSubscription(handler, subscribe, autoAck));
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -217,8 +216,7 @@ public class NatsStreamImpl implements NatsStream {
                     promise.complete();
                 }
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.handle(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
@@ -232,10 +230,14 @@ public class NatsStreamImpl implements NatsStream {
                 final PublishAck ack = jetStream.publish(data, options);
                 promise.complete(ack);
             } catch (Exception e) {
-                promise.fail(e);
-                throw new RuntimeException(e);
+                handleException(promise, e);
             }
         });
         return promise.future();
+    }
+
+    private void handleException(Promise<?> promise, Exception e) {
+        promise.fail(e);
+        throw new RuntimeException(e);
     }
 }
