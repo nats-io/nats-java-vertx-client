@@ -75,7 +75,7 @@ public class NatsClientImpl implements NatsClient {
             try {
 
                 final JetStream jetStream = connection.jetStream();
-                promise.complete(new NatsStreamImpl(jetStream, context, vertx));
+                promise.complete(new NatsStreamImpl(jetStream, this.connection, context, vertx));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -90,7 +90,7 @@ public class NatsClientImpl implements NatsClient {
         vertx.runOnContext(event -> {
             try {
                 final JetStream jetStream = connection.jetStream(options);
-                promise.complete(new NatsStreamImpl(jetStream, context, vertx));
+                promise.complete(new NatsStreamImpl(jetStream, this.connection, context, vertx));
             } catch (Exception e) {
                 handleException(promise, e);
             }
