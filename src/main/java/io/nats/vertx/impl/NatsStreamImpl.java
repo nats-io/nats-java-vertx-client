@@ -13,6 +13,9 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * NATS stream implementation.
+ */
 public class NatsStreamImpl implements NatsStream {
 
     private final JetStream jetStream;
@@ -29,6 +32,13 @@ public class NatsStreamImpl implements NatsStream {
     private Handler<Throwable> exceptionHandler = event -> {
     };
 
+    /**
+     * Create instance
+     * @param jetStream jetStream
+     * @param connection Nats connection
+     * @param contextInternal vertx context
+     * @param vertx vertx
+     */
     public NatsStreamImpl(final JetStream jetStream, final Connection connection, final ContextInternal contextInternal, final Vertx vertx) {
 
         this.connection = connection;

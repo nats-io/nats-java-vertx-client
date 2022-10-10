@@ -10,8 +10,11 @@ import io.vertx.core.streams.WriteStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeoutException;
 
+
+/**
+ * NATS Client implementation.
+ */
 public class NatsClientImpl implements NatsClient {
     private static final Duration noWait = Duration.ofNanos(1);
     private final Vertx vertx;
@@ -22,6 +25,11 @@ public class NatsClientImpl implements NatsClient {
     private Promise<Void> connectFuture;
     private Handler<Throwable> exceptionHandler = event -> {};
 
+    /**
+     * Create new client implementation.
+     * @param config config
+     * @param vertx vertx
+     */
     public NatsClientImpl(final Options.Builder config, final Vertx vertx) {
         this.vertx = vertx;
         context = (ContextInternal) vertx.getOrCreateContext();
@@ -56,6 +64,10 @@ public class NatsClientImpl implements NatsClient {
 
     }
 
+    /**
+     * Connect.
+     * @return connection status future.
+     */
     @Override
     public Future<Void> connect() {
         vertx.runOnContext(event -> {
@@ -82,6 +94,10 @@ public class NatsClientImpl implements NatsClient {
         return this.connectFuture.future();
     }
 
+    /**
+     * Return new JetStream stream instance.
+     * @return JetStream.
+     */
     @Override
     public Future<NatsStream> jetStream() {
         final Promise<NatsStream> promise = context.promise();
@@ -98,6 +114,11 @@ public class NatsClientImpl implements NatsClient {
         return promise.future();
     }
 
+    /**
+     * Return new JetStream stream instance.
+     * @param options JetStream options.
+     * @return JetStream.
+     */
     @Override
     public Future<NatsStream> jetStream(final JetStreamOptions options) {
         final Promise<NatsStream> promise = context.promise();
@@ -112,12 +133,22 @@ public class NatsClientImpl implements NatsClient {
         return promise.future();
     }
 
+    /**
+     * Wire the exception handler
+     * @param handler  the exception handler
+     * @return this stream.
+     */
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
         vertx.runOnContext(event -> this.exceptionHandler = handler);
         return this;
     }
 
+    /**
+     * Write the message
+     * @param data  the data to write
+     * @return status of write operation future.
+     */
     @Override
     public Future<Void> write(final Message data) {
         final Promise<Void> promise = context.promise();
@@ -132,6 +163,11 @@ public class NatsClientImpl implements NatsClient {
         return promise.future();
     }
 
+    /**
+     * Write the message
+     * @param data  the data to write
+     * @param handler status of write operation future.
+     */
     @Override
     public void write(Message data, Handler<AsyncResult<Void>> handler) {
         final Promise<Void> promise = context.promise();
@@ -147,7 +183,10 @@ public class NatsClientImpl implements NatsClient {
     }
 
 
-
+    /**
+     * End and close this.
+     * @param handler End Handler.
+     */
     @Override
     public void end(Handler<AsyncResult<Void>> handler) {
         final Promise<Void> promise = context.promise();
@@ -162,6 +201,11 @@ public class NatsClientImpl implements NatsClient {
         });
     }
 
+    /**
+     * Set Queue Max size
+     * @param maxSize  the max size of the write stream
+     * @return this stream
+     */
     @Override
     public WriteStream<Message> setWriteQueueMaxSize(int maxSize) {
         return this;
