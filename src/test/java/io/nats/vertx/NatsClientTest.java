@@ -477,7 +477,7 @@ public class NatsClientTest {
             latch.countDown();
         });
 
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < 10; i++) {
             nc.publish(SUBJECT_NAME, (data + i).getBytes());
             try {
                 nc.flush(Duration.ofSeconds(1));
