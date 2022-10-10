@@ -6,6 +6,8 @@ plugins {
     id 'maven-publish'
     id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
     id 'signing'
+    id "org.gradle.test-retry" version "1.1.9"
+
 }
 
 def jarVersion = "1.0.0.ALPHA"
@@ -44,20 +46,34 @@ dependencies {
 
 }
 
-testing {
-    suites {
-        // Configure the built-in test suite
-        test {
-            // Use JUnit Jupiter test framework
-            useJUnitJupiter('5.8.2')
-        }
-    }
-}
+//testing {
+//    suites {
+//        // Configure the built-in test suite
+//        test {
+//            // Use JUnit Jupiter test framework
+//            useJUnitJupiter('5.8.2')
+//        }
+//    }
+//}
 
+test {
+    useJUnitPlatform()
+    maxHeapSize = "2g"
+    testLogging {
+        exceptionFormat = 'full'
+        events "started", "passed", "skipped", "failed"
+    }
+    retry {
+        failOnPassedAfterRetry = false
+        maxFailures = 5
+        maxRetries = 5
+    }
+    maxParallelForks = Runtime.runtime.availableProcessors()
+}
 javadoc {
     options.overview = 'src/main/javadoc/overview.html' // relative to source root
     source = sourceSets.main.allJava
-    title = "NATS.IO Java Server Runner"
+    title = "NATS.IO Java Vert.x Client lib"
     classpath = sourceSets.main.runtimeClasspath
     doLast {
         if (!OperatingSystem.current().isWindows()) {

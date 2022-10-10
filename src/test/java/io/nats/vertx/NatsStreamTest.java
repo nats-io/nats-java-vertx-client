@@ -1,14 +1,11 @@
 package io.nats.vertx;
 
 import io.nats.client.*;
-import io.nats.client.api.PublishAck;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.impl.NatsMessage;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.AfterEach;

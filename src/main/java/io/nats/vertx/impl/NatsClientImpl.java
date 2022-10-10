@@ -7,10 +7,10 @@ import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 
 public class NatsClientImpl implements NatsClient {
     private static final Duration noWait = Duration.ofNanos(1);
@@ -65,6 +65,20 @@ public class NatsClientImpl implements NatsClient {
                 handleException(connectFuture, e);
             }
         });
+
+        vertx.setPeriodic(1000, new Handler<Long>() {
+            @Override
+            public void handle(Long event) {
+                try {
+                    if (connection != null && connection.getStatus() == Connection.Status.CONNECTED) {
+                        connection.flush(Duration.ofSeconds(1));
+                    }
+                } catch (Exception e) {
+                  exceptionHandler.handle(e);
+                }
+            }
+        });
+
         return this.connectFuture.future();
     }
 

@@ -57,8 +57,8 @@ public class LoadTestMain {
     }
 
     private static void loadTest(final NatsStream jetStream) throws Exception {
-        final var latch = new CountDownLatch(MESSAGE_COUNT);
-        final var counter = new LongAdder();
+        final CountDownLatch latch = new CountDownLatch(MESSAGE_COUNT);
+        final LongAdder counter = new LongAdder();
 
         jetStream.subscribe(SUBJECT_NAME, event -> {
 
@@ -82,7 +82,7 @@ public class LoadTestMain {
     }
 
     private static void unsubscribe(final NatsStream jetStream) throws Exception{
-        final var latch = new CountDownLatch(1);
+        final CountDownLatch latch = new CountDownLatch(1);
 
 
         jetStream.unsubscribe(SUBJECT_NAME).onSuccess(handler->latch.countDown());
@@ -91,7 +91,7 @@ public class LoadTestMain {
     }
 
     private static void closeVertx() throws Exception{
-        final var latch = new CountDownLatch(1);
+        final CountDownLatch latch = new CountDownLatch(1);
 
         VERTX.close().onSuccess(handler-> {
             latch.countDown();
