@@ -13,10 +13,10 @@ public class LoadTestPubMain extends LoadTestMain {
         setup(PORT);
         final NatsClient natsClient = getNatsClient(PORT);
         final NatsStream jetStream = getJetStream(natsClient);
-        final var latch = new CountDownLatch(MESSAGE_COUNT);
-        final var counter = new LongAdder();
+        final CountDownLatch latch = new CountDownLatch(MESSAGE_COUNT);
+        final LongAdder counter = new LongAdder();
 
-        final var startTime = System.currentTimeMillis();
+        final long startTime = System.currentTimeMillis();
 
 
         for (int i = 0; i < MESSAGE_COUNT; i++) {
@@ -27,13 +27,13 @@ public class LoadTestPubMain extends LoadTestMain {
         }
 
         if (latch.await(30, TimeUnit.SECONDS)) {
-            final var endTime = System.currentTimeMillis();
+            final long endTime = System.currentTimeMillis();
 
 
             final long duration = endTime - startTime;
             System.out.printf("PUB %s %d %,d %d \n", SUBJECT_NAME, MESSAGE_COUNT, counter.sum(), duration);
         } else {
-            final var endTime = System.currentTimeMillis();
+            final long endTime = System.currentTimeMillis();
             final long duration = endTime - startTime;
             System.out.printf("FAILED PUB %s %d %,d %d \n", SUBJECT_NAME, MESSAGE_COUNT, counter.sum(), duration);
         }

@@ -55,8 +55,8 @@ public class LoadTestOriginalMain {
     }
 
     private static void loadTest(final JetStream jetStream, final Connection connection) throws Exception {
-        final var latch = new CountDownLatch(MESSAGE_COUNT);
-        final var counter = new LongAdder();
+        final CountDownLatch latch = new CountDownLatch(MESSAGE_COUNT);
+        final LongAdder counter = new LongAdder();
 
         final Dispatcher dispatcher = connection.createDispatcher();
 
@@ -129,7 +129,7 @@ public class LoadTestOriginalMain {
                 }
             }
         });
-        final var natsClient = Nats.connect(natsOptions.build());
+        final Connection natsClient = Nats.connect(natsOptions.build());
 
         latch.await(1, TimeUnit.SECONDS);
 

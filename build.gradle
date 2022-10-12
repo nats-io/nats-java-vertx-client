@@ -1,0 +1,166 @@
+import org.gradle.internal.os.OperatingSystem
+
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
+    id 'signing'
+    id "org.gradle.test-retry" version "1.1.9"
+
+}
+
+def jarVersion = "1.0.0.ALPHA"
+group = 'io.nats'
+
+def isMerge = System.getenv("BUILD_EVENT") == "push"
+def isRelease = System.getenv("BUILD_EVENT") == "release"
+
+// version is the variable the build actually uses.
+version = isRelease ? jarVersion : jarVersion + "-SNAPSHOT"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    // This dependency is exported to consumers, that is to say found on their compile classpath.
+    api 'org.apache.commons:commons-math3:3.6.1'
+
+    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
+    implementation 'com.google.guava:guava:31.0.1-jre'
+
+    implementation 'io.nats:jnats:2.16.0'
+
+    implementation(platform("io.vertx:vertx-stack-depchain:4.3.3"))
+    implementation("io.vertx:vertx-core")
+    testImplementation("io.vertx:vertx-junit5")
+    implementation("io.netty:netty-resolver-dns-native-macos:4.1.80.Final:osx-x86_64")
+    implementation 'io.nats:jnats-server-runner:1.0.9'
+
+}
+
+//testing {
+//    suites {
+//        // Configure the built-in test suite
+//        test {
+//            // Use JUnit Jupiter test framework
+//            useJUnitJupiter('5.8.2')
+//        }
+//    }
+//}
+
+test {
+    useJUnitPlatform()
+    maxHeapSize = "2g"
+    testLogging {
+        exceptionFormat = 'full'
+        events "started", "passed", "skipped", "failed"
+    }
+    retry {
+        failOnPassedAfterRetry = false
+        maxFailures = 5
+        maxRetries = 5
+    }
+    maxParallelForks = Runtime.runtime.availableProcessors()
+}
+javadoc {
+    options.overview = 'src/main/javadoc/overview.html' // relative to source root
+    source = sourceSets.main.allJava
+    title = "NATS.IO Java Vert.x Client lib"
+    classpath = sourceSets.main.runtimeClasspath
+    doLast {
+        if (!OperatingSystem.current().isWindows()) {
+            exec {
+                println "Updating favicon on all html files"
+                workingDir 'build/docs/javadoc'
+                // Only on linux, mac at this point
+                commandLine 'find', '.', '-name', '*.html', '-exec', 'sed', '-i', '-e', 's#<head>#<head><link rel="icon" type="image/ico" href="favicon.ico">#', '{}', ';'
+            }
+            copy {
+                println "Copying images to javadoc folder"
+                from 'src/main/javadoc/images'
+                into 'build/docs/javadoc'
+            }
+        }
+    }
+}
+
+
+task javadocJar(type: Jar) {
+    archiveClassifier.set('javadoc')
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+if (isMerge || isRelease) {
+    nexusPublishing {
+        repositories {
+            sonatype {
+                username = System.getenv('OSSRH_USERNAME')
+                password = System.getenv('OSSRH_PASSWORD')
+            }
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+            pom {
+                name = rootProject.name
+                packaging = 'jar'
+                groupId = group
+                artifactId = archivesBaseName
+                description = 'Java NATS.io server runner.'
+                url = 'https://github.com/nats-io/java-nats-server-runner'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = "synadia"
+                        name = "Synadia"
+                        email = "info@synadia.com"
+                        url = "https://nats.io"
+                    }
+                }
+                scm {
+                    url = 'https://github.com/nats-io/java-nats-server-runner'
+                }
+            }
+        }
+    }
+}
+
+if (isRelease) {
+    signing {
+        def signingKeyId = System.getenv('SIGNING_KEY_ID')
+        def signingKey = System.getenv('SIGNING_KEY')
+        def signingPassword = System.getenv('SIGNING_PASSWORD')
+        useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+        sign configurations.archives
+        sign publishing.publications.mavenJava
+    }
+}
+

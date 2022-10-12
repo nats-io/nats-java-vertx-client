@@ -4,9 +4,6 @@ import io.nats.client.Connection;
 import io.nats.client.JetStream;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.LongAdder;
 
 public class LoadTestOriginalPubMain extends LoadTestOriginalMain{
 
