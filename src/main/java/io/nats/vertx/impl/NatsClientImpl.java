@@ -387,7 +387,7 @@ public class NatsClientImpl implements NatsClient {
             try {
 
                 final Subscription subscribe = connection.subscribe(subject);
-                vertx.runOnContext(event1 -> drainSubscription(handler, subscribe));
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe));
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -407,17 +407,9 @@ public class NatsClientImpl implements NatsClient {
                 } catch (Exception e) {
                     exceptionHandler.handle(e);
                 }
-                if (count > 10) {
-                    vertx.runOnContext(event -> drainSubscription(handler, subscribe));
-                    break;
-                } else {
-                    message = subscribe.nextMessage(noWait);
-                }
+                message = subscribe.nextMessage(noWait);
             }
-
-            if (message == null) {
-                vertx.setTimer(100, event -> drainSubscription(handler, subscribe));
-            }
+            vertx.setTimer(100, event -> vertx.executeBlocking(e -> drainSubscription(handler, subscribe)));
         } catch (Exception e) {
             exceptionHandler.handle(e);
         }
@@ -428,9 +420,8 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.runOnContext(event -> {
             try {
-
                 final Subscription subscribe = connection.subscribe(subject, queue);
-                vertx.runOnContext(event1 -> drainSubscription(handler, subscribe));
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe));
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);

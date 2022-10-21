@@ -188,22 +188,19 @@ public class NatsClientTest {
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
         final String data = "data";
 
-        natsClientSub.subscribe(SUBJECT_NAME, event -> {
+        natsClientSub.subscribe(SUBJECT_NAME + "testWriteAsyncResultSub", event -> {
             queue.add(event);
             receiveLatch.countDown();
         });
 
         for (int i = 0; i < 10; i++) {
 
-            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
+            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME  + "testWriteAsyncResultSub")
                     .data(data + i, StandardCharsets.UTF_8)
                     .build();
-            natsClientPub.write(message, new Handler<AsyncResult<Void>>() {
-                @Override
-                public void handle(AsyncResult<Void> event) {
-                    if (event.succeeded()) {
-                        sendLatch.countDown();
-                    }
+            natsClientPub.write(message, event -> {
+                if (event.succeeded()) {
+                    sendLatch.countDown();
                 }
             });
         }
