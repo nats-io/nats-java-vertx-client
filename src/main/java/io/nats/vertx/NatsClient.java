@@ -6,6 +6,8 @@ import io.nats.vertx.impl.NatsClientImpl;
 import io.vertx.core.*;
 import io.vertx.core.streams.WriteStream;
 
+import java.time.Duration;
+
 /**
  * NATS client that implements Vert.x WriteStream.
  */
@@ -133,6 +135,41 @@ public interface NatsClient extends WriteStream<Message> {
      * @return future to know results of the request operation.
      */
     Future<Message> request(String subject, byte[] message);
+
+
+    /**
+     *
+     * Send request.
+     * @param data the message
+     * @param handler callback handler to know the results of the request operation.
+     */
+    void request(Message data, Handler<AsyncResult<Message>> handler, Duration timeout);
+
+    /**
+     *
+     * Send request.
+     * @param data the message
+     * @return future to know results of the request operation.
+     */
+    Future<Message> request(Message data, Duration timeout);
+
+    /**
+     *
+     * Send request.
+     * @param subject The message subject.
+     * @param message the message
+     * @return future to know results of the request operation.
+     */
+    Future<Message> request(String subject, String message, Duration timeout);
+
+    /**
+     *
+     * Send request.
+     * @param subject The message subject.
+     * @param message the message
+     * @return future to know results of the request operation.
+     */
+    Future<Message> request(String subject, byte[] message, Duration timeout);
 
     /**
      *

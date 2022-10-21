@@ -10,6 +10,7 @@ import io.vertx.core.streams.WriteStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -323,6 +324,54 @@ public class NatsClientImpl implements NatsClient {
             try {
                 final CompletableFuture<Message> request = connection.request(subject, message);
                 final Message result = request.get();
+                event.complete(result);
+            } catch (Exception e) {
+                handleException(event, e);
+            }
+        });
+    }
+
+    @Override
+    public void request(final Message data, final Handler<AsyncResult<Message>> handler, final Duration timeout) {
+        final Promise<Message> promise = context.promise();
+        vertx.executeBlocking((Handler<Promise<Void>>) event -> {
+            try {
+                final CompletableFuture<Message> request = connection.request(data);
+                final Message message = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                promise.complete(message);
+                handler.handle(promise.future());
+            } catch (Exception e) {
+                promise.fail(e);
+                handler.handle(promise.future());
+                exceptionHandler.handle(e);
+            }
+        });
+    }
+
+    @Override
+    public Future<Message> request(final Message data, final Duration timeout) {
+        return vertx.executeBlocking(event -> {
+            try {
+                final CompletableFuture<Message> request = connection.request(data);
+                final Message message = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                event.complete(message);
+            } catch (Exception e) {
+                handleException(event, e);
+            }
+        });
+    }
+
+    @Override
+    public Future<Message> request(String subject, String message, Duration timeout) {
+        return  request(subject, message.getBytes(StandardCharsets.UTF_8), timeout);
+    }
+
+    @Override
+    public Future<Message> request(final String subject, final byte[] message, final Duration timeout) {
+        return vertx.executeBlocking(event -> {
+            try {
+                final CompletableFuture<Message> request = connection.request(subject, message);
+                final Message result = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
                 event.complete(result);
             } catch (Exception e) {
                 handleException(event, e);
