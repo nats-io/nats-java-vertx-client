@@ -95,7 +95,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         natsStream.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             latch.countDown();
         }, true, new PushSubscribeOptions.Builder().build());
 
@@ -121,7 +121,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         natsStream.subscribe(SUBJECT_NAME, "FOO", event -> {
-            queue.add(event);
+            queue.add(event.message());
             latch.countDown();
         }, true, new PushSubscribeOptions.Builder().build());
 
@@ -246,7 +246,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -284,7 +284,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -347,7 +347,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -385,7 +385,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             try {
                 receiveLatch.countDown();
             } catch (Exception ex) {}
@@ -451,7 +451,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -494,7 +494,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -536,7 +536,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -574,7 +574,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 
@@ -613,7 +613,7 @@ public class NatsStreamTest {
         final String data = "data";
 
         jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-            queue.add(event);
+            queue.add(event.message());
             receiveLatch.countDown();
         }, true, PushSubscribeOptions.builder().build());
 

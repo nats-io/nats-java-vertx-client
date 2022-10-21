@@ -3,6 +3,7 @@ package io.nats.vertx.impl;
 import io.nats.client.*;
 import io.nats.client.api.PublishAck;
 import io.nats.vertx.NatsStream;
+import io.nats.vertx.NatsVertxMessage;
 import io.vertx.core.*;
 
 import io.vertx.core.impl.ContextInternal;
@@ -147,13 +148,25 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> subscribe(String subject, Handler<Message> handler, boolean autoAck, PushSubscribeOptions so) {
+    public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context.promise();
+
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
+            @Override
+            public Message message() {
+                return event;
+            }
+
+            @Override
+            public Vertx vertx() {
+                return vertx;
+            }
+        });
         vertx.runOnContext(event -> {
             try {
 
                 final Dispatcher dispatcher = connection.createDispatcher();
-                final Subscription subscribe = jetStream.subscribe(subject, dispatcher, msg -> handler.handle(msg), autoAck, so);
+                final Subscription subscribe = jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
                 subscriptionMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
@@ -165,13 +178,24 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> subscribe(String subject, String queue, Handler<Message> handler, boolean autoAck, PushSubscribeOptions so) {
+    public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context.promise();
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
+            @Override
+            public Message message() {
+                return event;
+            }
+            @Override
+            public Vertx vertx() {
+                return vertx;
+            }
+        });
+
         vertx.runOnContext(event -> {
             try {
 
                 final Dispatcher dispatcher = connection.createDispatcher();
-                jetStream.subscribe(subject, queue, dispatcher, msg -> handler.handle(msg), autoAck, so);
+                jetStream.subscribe(subject, queue, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
                 subscriptionMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {

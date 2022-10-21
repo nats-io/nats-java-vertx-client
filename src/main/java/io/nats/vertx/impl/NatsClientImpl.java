@@ -10,6 +10,7 @@ import io.vertx.core.streams.WriteStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -331,6 +332,54 @@ public class NatsClientImpl implements NatsClient {
     }
 
     @Override
+    public void request(final Message data, final Handler<AsyncResult<Message>> handler, final Duration timeout) {
+        final Promise<Message> promise = context.promise();
+        vertx.executeBlocking((Handler<Promise<Void>>) event -> {
+            try {
+                final CompletableFuture<Message> request = connection.request(data);
+                final Message message = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                promise.complete(message);
+                handler.handle(promise.future());
+            } catch (Exception e) {
+                promise.fail(e);
+                handler.handle(promise.future());
+                exceptionHandler.handle(e);
+            }
+        });
+    }
+
+    @Override
+    public Future<Message> request(final Message data, final Duration timeout) {
+        return vertx.executeBlocking(event -> {
+            try {
+                final CompletableFuture<Message> request = connection.request(data);
+                final Message message = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                event.complete(message);
+            } catch (Exception e) {
+                handleException(event, e);
+            }
+        });
+    }
+
+    @Override
+    public Future<Message> request(String subject, String message, Duration timeout) {
+        return  request(subject, message.getBytes(StandardCharsets.UTF_8), timeout);
+    }
+
+    @Override
+    public Future<Message> request(final String subject, final byte[] message, final Duration timeout) {
+        return vertx.executeBlocking(event -> {
+            try {
+                final CompletableFuture<Message> request = connection.request(subject, message);
+                final Message result = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                event.complete(result);
+            } catch (Exception e) {
+                handleException(event, e);
+            }
+        });
+    }
+
+    @Override
     public Future<Void> subscribe(String subject, Handler<Message> handler) {
 
         final Promise<Void> promise = context.promise();
@@ -338,7 +387,7 @@ public class NatsClientImpl implements NatsClient {
             try {
 
                 final Subscription subscribe = connection.subscribe(subject);
-                vertx.runOnContext(event1 -> drainSubscription(handler, subscribe));
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe));
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -358,17 +407,9 @@ public class NatsClientImpl implements NatsClient {
                 } catch (Exception e) {
                     exceptionHandler.handle(e);
                 }
-                if (count > 10) {
-                    vertx.runOnContext(event -> drainSubscription(handler, subscribe));
-                    break;
-                } else {
-                    message = subscribe.nextMessage(noWait);
-                }
+                message = subscribe.nextMessage(noWait);
             }
-
-            if (message == null) {
-                vertx.setTimer(100, event -> drainSubscription(handler, subscribe));
-            }
+            vertx.setTimer(100, event -> vertx.executeBlocking(e -> drainSubscription(handler, subscribe)));
         } catch (Exception e) {
             exceptionHandler.handle(e);
         }
@@ -379,9 +420,8 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.runOnContext(event -> {
             try {
-
                 final Subscription subscribe = connection.subscribe(subject, queue);
-                vertx.runOnContext(event1 -> drainSubscription(handler, subscribe));
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe));
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);

@@ -60,7 +60,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @return future that returns status of subscription.
      */
     Future<Void> subscribe(
-            String subject, Handler<Message> handler, boolean autoAck, PushSubscribeOptions so);
+            String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so);
 
     /**
      * Subscribe to JetStream stream
@@ -74,7 +74,7 @@ public interface NatsStream extends WriteStream<Message> {
     Future<Void> subscribe(
             String subject,
             String queue,
-            Handler<Message> handler,
+            Handler<NatsVertxMessage> handler,
             boolean autoAck,
             PushSubscribeOptions so);
 
