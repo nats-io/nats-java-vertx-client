@@ -58,17 +58,17 @@ dependencies {
 
 test {
     useJUnitPlatform()
-    maxHeapSize = "2g"
+    maxHeapSize = "1g"
     testLogging {
         exceptionFormat = 'full'
         events "started", "passed", "skipped", "failed"
     }
     retry {
         failOnPassedAfterRetry = false
-        maxFailures = 5
-        maxRetries = 5
+        maxFailures = 20
+        maxRetries = 10
     }
-    maxParallelForks = Runtime.runtime.availableProcessors()
+    maxParallelForks = 1
 }
 javadoc {
     options.overview = 'src/main/javadoc/overview.html' // relative to source root
