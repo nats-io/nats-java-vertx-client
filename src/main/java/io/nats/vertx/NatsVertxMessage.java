@@ -70,7 +70,7 @@ public interface NatsVertxMessage {
             } catch (Throwable e){
                 promise.tryFail(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -92,7 +92,7 @@ public interface NatsVertxMessage {
             } catch (Throwable e){
                 promise.tryFail(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 

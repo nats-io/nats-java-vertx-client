@@ -206,6 +206,38 @@ public class NatsStreamImpl implements NatsStream {
         return promise.future();
     }
 
+
+
+    @Override
+    public Future<Void> subscribe(String subject, final Handler<NatsVertxMessage> handler, PullSubscribeOptions so) {
+        final Promise<Void> promise = context.promise();
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
+            @Override
+            public Message message() {
+                return event;
+            }
+            @Override
+            public Vertx vertx() {
+                return vertx;
+            }
+        });
+
+        vertx.runOnContext(event -> {
+            try {
+
+                JetStreamSubscription subscribe = jetStream.subscribe(subject, so);
+                //TODO finish this and write tests for it.
+                //subscribe.nextMessage()
+                //subscriptionMap.put(subject);
+                promise.complete();
+            } catch (Exception e) {
+                promise.fail(e);
+                exceptionHandler.handle(e);
+            }
+        });
+        return promise.future();
+    }
+
     @Override
     public Future<Void> unsubscribe(final String subject) {
         final Promise<Void> promise = context.promise();

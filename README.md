@@ -178,10 +178,6 @@ Push subscriptions are asynchronous. The server pushes messages to the client.
 
 ```java
 
-MessageHandler handler = (msg) -> {
-// Process the message.
-// Ack the message depending on the ack model
-};
 
 PushSubscribeOptions so = PushSubscribeOptions.builder()
 .durable("optional-durable-name")
@@ -189,7 +185,10 @@ PushSubscribeOptions so = PushSubscribeOptions.builder()
 
 boolean autoAck = ...
 
-js.subscribe("my-subject", handler, autoAck, so)
+js.subscribe("my-subject", (msg) -> {
+// Process the message.
+// Ack the message depending on the ack model
+        }, autoAck, so)
 .onSuccess(done ->
 System.out.println("Subscribe success."))
 .onFailure(err ->

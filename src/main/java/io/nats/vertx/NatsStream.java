@@ -78,6 +78,19 @@ public interface NatsStream extends WriteStream<Message> {
             boolean autoAck,
             PushSubscribeOptions so);
 
+
+    /**
+     * Subscribe to JetStream stream
+     * @param subject The subject of the stream.
+     * @param handler The message handler to listen to messages from the stream.
+     * @param so The PullSubscribeOptions
+     * @return future that returns status of subscription.
+     */
+    Future<Void> subscribe(
+            String subject, Handler<NatsVertxMessage> handler, PullSubscribeOptions so);
+
+
+
     /**
      * Unsubscribe from the Stream.
      * @param subject Subject to unsubscribe from.

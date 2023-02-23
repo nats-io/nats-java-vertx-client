@@ -587,7 +587,7 @@ public class NatsClientTest {
         }).onFailure(event -> {
             error.set(event);
             latch.countDown();
-        });
+        }).onFailure(Throwable::printStackTrace);
         latch.await(1, TimeUnit.SECONDS);
         if (error.get() != null) {
             throw new IllegalStateException(error.get());
