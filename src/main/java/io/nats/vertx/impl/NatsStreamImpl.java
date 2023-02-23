@@ -50,7 +50,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
-        vertx.executeBlocking(event -> this.exceptionHandler = handler);
+        vertx.executeBlocking(event -> this.exceptionHandler = handler, false);
         return this;
     }
 

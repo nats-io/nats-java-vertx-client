@@ -297,7 +297,7 @@ public class NatsClientImpl implements NatsClient {
                 handler.handle(promise.future());
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
     }
 
     @Override
@@ -310,7 +310,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(event, e);
             }
-        });
+        }, false);
     }
 
     @Override
@@ -328,7 +328,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(event, e);
             }
-        });
+        }, false);
     }
 
     @Override
@@ -345,7 +345,7 @@ public class NatsClientImpl implements NatsClient {
                 handler.handle(promise.future());
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
     }
 
     @Override
@@ -358,7 +358,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(event, e);
             }
-        });
+        }, false);
     }
 
     @Override
@@ -376,7 +376,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(event, e);
             }
-        });
+        }, false);
     }
 
     @Override
@@ -409,7 +409,7 @@ public class NatsClientImpl implements NatsClient {
                 }
                 message = subscribe.nextMessage(noWait);
             }
-            vertx.setTimer(100, event -> vertx.executeBlocking(e -> drainSubscription(handler, subscribe)));
+            vertx.setTimer(100, event -> vertx.executeBlocking(e -> drainSubscription(handler, subscribe), false));
         } catch (Exception e) {
             exceptionHandler.handle(e);
         }
@@ -421,7 +421,7 @@ public class NatsClientImpl implements NatsClient {
         vertx.runOnContext(event -> {
             try {
                 final Subscription subscribe = connection.subscribe(subject, queue);
-                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe));
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe), false);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
