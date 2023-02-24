@@ -25,7 +25,7 @@ public class NatsStreamImpl implements NatsStream {
     private final ContextInternal context;
     private final Vertx vertx;
 
-    private final Map<String, Dispatcher> dispatcherMap = new HashMap<>();
+    private final ConcurrentHashMap<String, Dispatcher> dispatcherMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, JetStreamSubscription> subscriptionMap = new ConcurrentHashMap<>();
 
 

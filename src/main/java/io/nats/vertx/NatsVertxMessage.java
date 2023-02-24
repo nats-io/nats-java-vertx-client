@@ -22,16 +22,16 @@ public interface NatsVertxMessage {
      */
     default Future<Void> ack() {
         // This now returns a future that is truly async by running the code in the vertx thread context.
-        // Ack by default does not block, so we use runOnContext instead of executeBlocking.
+        // Ack by default does not block, but does IO so could introduce a wait state.
         final Promise<Void> promise = Promise.promise();
-        vertx().runOnContext(event -> {
+        vertx().executeBlocking(event -> {
             try {
                 message().ack();
                 promise.complete();
             } catch (Throwable e){
                 promise.tryFail(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -42,15 +42,14 @@ public interface NatsVertxMessage {
     default Future<Void> nak() {
         final Promise<Void> promise = Promise.promise();
         // This now returns a future that is truly async by running the code in the vertx thread context.
-        // Ack by default does not block so we use runOnContext instead of executeBlocking.
-        vertx().runOnContext(event -> {
+        vertx().executeBlocking(event -> {
             try {
                 message().nak();
                 promise.complete();
             } catch (Throwable e){
                 promise.tryFail(e);
             }
-        });
+        }, false);
         return promise.future();
     }
     /**
@@ -62,7 +61,6 @@ public interface NatsVertxMessage {
     default Future<Void> nakWithDelay(final Duration nakDelay) {
         // This now returns a future that is truly async by running the code using vertx executeBlocking
         // which executes with a thread pool separate from the event loop IO context of vert.x.
-        // The method nakWithDelay blocks up to the nakDelay, so we use executeBlocking instead of runOnContext
         // because we can't block the vert.x IO event loop.
         final Promise<Void> promise = Promise.promise();
         vertx().executeBlocking(event -> {
@@ -85,7 +83,6 @@ public interface NatsVertxMessage {
         final Promise<Void> promise = Promise.promise();
         // This now returns a future that is truly async by running the code using vertx executeBlocking
         // which executes with a thread pool separate from the event loop IO context of vert.x.
-        // The method nakWithDelay blocks up to the nakDelay, so we use executeBlocking instead of runOnContext
         // because we can't block the vert.x IO event loop.
         vertx().executeBlocking(event -> {
             try {

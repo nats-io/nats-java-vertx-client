@@ -74,13 +74,13 @@ public class NatsClientImpl implements NatsClient {
      */
     @Override
     public Future<Void> connect() {
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 connection = Nats.connect(options);
             } catch (Exception e) {
                 handleException(connectFuture, e);
             }
-        });
+        }, false);
 
         vertx.setPeriodic(1000, new Handler<Long>() {
             @Override
@@ -105,7 +105,7 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Future<NatsStream> jetStream() {
         final Promise<NatsStream> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
 
                 final JetStream jetStream = connection.jetStream();
@@ -114,7 +114,7 @@ public class NatsClientImpl implements NatsClient {
                 handleException(promise, e);
             }
 
-        });
+        }, false);
         return promise.future();
     }
 
@@ -126,14 +126,14 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Future<NatsStream> jetStream(final JetStreamOptions options) {
         final Promise<NatsStream> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 final JetStream jetStream = connection.jetStream(options);
                 promise.complete(new NatsStreamImpl(jetStream, this.connection, context, vertx));
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -144,7 +144,7 @@ public class NatsClientImpl implements NatsClient {
      */
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
-        vertx.runOnContext(event -> this.exceptionHandler = handler);
+        vertx.executeBlocking(event -> this.exceptionHandler = handler, false);
         return this;
     }
 
