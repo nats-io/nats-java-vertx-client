@@ -8,6 +8,8 @@ import io.vertx.core.Vertx;
 import java.time.Duration;
 
 public interface NatsVertxMessage {
+    
+    
     /** Wrapper around the Nats Message. */
     Message message();
 
@@ -70,7 +72,7 @@ public interface NatsVertxMessage {
             } catch (Throwable e){
                 promise.tryFail(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -92,7 +94,7 @@ public interface NatsVertxMessage {
             } catch (Throwable e){
                 promise.tryFail(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
