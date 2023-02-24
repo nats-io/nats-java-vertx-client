@@ -10,6 +10,7 @@ import io.vertx.core.streams.WriteStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 
@@ -25,6 +26,8 @@ public class NatsClientImpl implements NatsClient {
     private final Options options;
     private Promise<Void> connectFuture;
     private Handler<Throwable> exceptionHandler = event -> {};
+
+    private final ConcurrentHashMap<String, Subscription> subscriptionMap = new ConcurrentHashMap<>();
 
     /**
      * Create new client implementation.
@@ -387,7 +390,8 @@ public class NatsClientImpl implements NatsClient {
             try {
 
                 final Subscription subscribe = connection.subscribe(subject);
-                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe));
+                subscriptionMap.put(subject, subscribe);
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe, subject));
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -396,7 +400,7 @@ public class NatsClientImpl implements NatsClient {
         return promise.future();
     }
 
-    private void drainSubscription(Handler<Message> handler, Subscription subscribe) {
+    private void drainSubscription(Handler<Message> handler, final Subscription subscribe, final String subject) {
         try {
             Message message = subscribe.nextMessage(noWait);
             int count = 0;
@@ -409,7 +413,8 @@ public class NatsClientImpl implements NatsClient {
                 }
                 message = subscribe.nextMessage(noWait);
             }
-            vertx.setTimer(100, event -> vertx.executeBlocking(e -> drainSubscription(handler, subscribe), false));
+            if (subscriptionMap.containsKey(subject))
+            vertx.setTimer(100, event -> vertx.executeBlocking(e -> drainSubscription(handler, subscribe, subject), false));
         } catch (Exception e) {
             exceptionHandler.handle(e);
         }
@@ -421,7 +426,27 @@ public class NatsClientImpl implements NatsClient {
         vertx.runOnContext(event -> {
             try {
                 final Subscription subscribe = connection.subscribe(subject, queue);
-                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe), false);
+                subscriptionMap.put(subject, subscribe);
+                vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe, subject), false);
+                promise.complete();
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        });
+        return promise.future();
+    }
+
+    @Override
+    public Future<Void> unsubscribe(final String subject) {
+        final Promise<Void> promise = context.promise();
+        vertx.runOnContext(event -> {
+            try {
+
+                final Subscription subscription = subscriptionMap.get(subject);
+                if (subscription!=null) {
+                    subscriptionMap.remove(subject);
+                    subscription.unsubscribe();
+                }
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);

@@ -8,6 +8,8 @@ import io.vertx.core.Vertx;
 import java.time.Duration;
 
 public interface NatsVertxMessage {
+    
+    
     /** Wrapper around the Nats Message. */
     Message message();
 

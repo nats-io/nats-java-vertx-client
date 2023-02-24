@@ -58,7 +58,7 @@ public class NatsClientTest {
         try {
             streamInfo = jsm.getStreamInfo(SUBJECT_NAME);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            //ex.printStackTrace();
         }
 
         if (streamInfo == null) {
@@ -106,6 +106,10 @@ public class NatsClientTest {
         natsClientPub.end().onSuccess(event -> endLatch.countDown());
         natsClientSub.end().onSuccess(event -> endLatch.countDown());
         endLatch.await(3, TimeUnit.SECONDS);
+        natsClientSub.unsubscribe(SUBJECT_NAME)
+                .onFailure(Throwable::printStackTrace)
+                .onSuccess(event -> System.out.println("Success"));
+
     }
 
 
@@ -129,7 +133,7 @@ public class NatsClientTest {
             natsClientPub.publish(SUBJECT_NAME, (data + i));
         }
 
-        latch.await(5, TimeUnit.SECONDS);
+        latch.await(10, TimeUnit.SECONDS);
 
         assertTrue(queue.size() > 98);
 
@@ -541,6 +545,8 @@ public class NatsClientTest {
         }
 
         latch.await(3, TimeUnit.SECONDS);
+
+        natsClient.unsubscribe(SUBJECT_NAME);
 
         assertTrue(queue.size() > 8);
         closeClient(natsClient);

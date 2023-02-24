@@ -191,6 +191,14 @@ public interface NatsClient extends WriteStream<Message> {
     Future<Void> subscribe(String subject, String queue, Handler<Message> handler);
 
     /**
+     *
+     * Unsubscribe to subject.
+     * @param subject The subscription subject.
+     * @return future to know results of the subscribe operation.
+     */
+    Future<Void> unsubscribe(String subject);
+
+    /**
      * Get the underlying NATS connection
      * @return Low level NATS connection.
      */
