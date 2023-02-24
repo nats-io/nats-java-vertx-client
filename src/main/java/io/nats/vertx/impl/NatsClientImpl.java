@@ -156,14 +156,14 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Future<Void> write(final Message data) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 connection.publish(data);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -175,7 +175,7 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public void write(Message data, Handler<AsyncResult<Void>> handler) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 connection.publish(data);
                 promise.complete();
@@ -183,7 +183,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleExceptionWithHandler(handler, promise, e);
             }
-        });
+        }, false);
     }
 
 
@@ -194,7 +194,7 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public void end(Handler<AsyncResult<Void>> handler) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 connection.close();
                 promise.complete();
@@ -202,7 +202,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleExceptionWithHandler(handler, promise, e);
             }
-        });
+        }, false);
     }
 
     /**
@@ -244,14 +244,14 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Future<Void> publish(String subject, String replyTo, byte[] message) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 connection.publish(subject, replyTo, message);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -263,14 +263,14 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Future<Void> publish(String subject, byte[] message) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 connection.publish(subject, message);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -386,7 +386,7 @@ public class NatsClientImpl implements NatsClient {
     public Future<Void> subscribe(String subject, Handler<Message> handler) {
 
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
 
                 final Subscription subscribe = connection.subscribe(subject);
@@ -396,7 +396,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -423,7 +423,7 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Future<Void> subscribe(String subject, String queue, Handler<Message> handler) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 final Subscription subscribe = connection.subscribe(subject, queue);
                 subscriptionMap.put(subject, subscribe);
@@ -432,14 +432,14 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
     @Override
     public Future<Void> unsubscribe(final String subject) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
 
                 final Subscription subscription = subscriptionMap.get(subject);
@@ -451,7 +451,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 

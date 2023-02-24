@@ -166,7 +166,7 @@ public class NatsStreamImpl implements NatsStream {
                 return vertx;
             }
         });
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
 
                 final Dispatcher dispatcher = connection.createDispatcher();
@@ -177,7 +177,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.fail(e);
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -195,7 +195,7 @@ public class NatsStreamImpl implements NatsStream {
             }
         });
 
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
 
                 final Dispatcher dispatcher = connection.createDispatcher();
@@ -206,7 +206,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.fail(e);
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -216,7 +216,7 @@ public class NatsStreamImpl implements NatsStream {
                                   final int batchSize) {
         final Promise<Void> promise = context.promise();
 
-        vertx.runOnContext(evt -> {
+        vertx.executeBlocking(evt -> {
             try {
 
                 final JetStreamSubscription subscription = so != null ? jetStream.subscribe(subject, so) : jetStream.subscribe(subject);
@@ -264,7 +264,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.fail(e);
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -272,7 +272,7 @@ public class NatsStreamImpl implements NatsStream {
     @Override
     public Future<Void> subscribe(final String subject, final Handler<NatsVertxMessage> handler) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(evt -> {
+        vertx.executeBlocking(evt -> {
             try {
                 final JetStreamSubscription subscription = jetStream.subscribe(subject);
                 subscriptionMap.put(subject, subscription);
@@ -309,7 +309,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.fail(e);
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
@@ -319,7 +319,7 @@ public class NatsStreamImpl implements NatsStream {
                                        final PullSubscribeOptions so) {
         final Promise<Void> promise = context.promise();
 
-        vertx.runOnContext(evt -> {
+        vertx.executeBlocking(evt -> {
             try {
 
                 final JetStreamSubscription subscription = jetStream.subscribe(subject, so);
@@ -367,14 +367,14 @@ public class NatsStreamImpl implements NatsStream {
                 promise.fail(e);
                 exceptionHandler.handle(e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
     @Override
     public Future<Void> unsubscribe(final String subject) {
         final Promise<Void> promise = context.promise();
-        vertx.runOnContext(event -> {
+        vertx.executeBlocking(event -> {
             try {
                 final Dispatcher dispatcher = dispatcherMap.get(subject);
                 if (dispatcher == null) {
@@ -394,7 +394,7 @@ public class NatsStreamImpl implements NatsStream {
             } catch (Exception e) {
                 handleException(promise, e);
             }
-        });
+        }, false);
         return promise.future();
     }
 
