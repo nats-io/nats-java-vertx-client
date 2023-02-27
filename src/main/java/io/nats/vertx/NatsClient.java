@@ -19,7 +19,7 @@ public interface NatsClient extends WriteStream<Message> {
      * @return NatsClient.
      */
     static NatsClient create(final NatsOptions natsOptions) {
-        return new NatsClientImpl(natsOptions.getNatsBuilder(), natsOptions.getVertx());
+        return new NatsClientImpl(natsOptions.getNatsBuilder(), natsOptions);
     }
 
     /**

@@ -8,6 +8,9 @@ public class NatsOptions {
     private Options.Builder natsBuilder;
     private Vertx vertx;
 
+    private boolean periodicFlush;
+    private long periodicFlushInterval;
+
     /** Get the NATS builder.
      *
      * @return Options.Builder
@@ -46,6 +49,24 @@ public class NatsOptions {
      */
     public NatsOptions setVertx(Vertx vertx) {
         this.vertx = vertx;
+        return this;
+    }
+
+    public boolean isPeriodicFlush() {
+        return periodicFlush;
+    }
+
+    public NatsOptions setPeriodicFlush(boolean periodicFlush) {
+        this.periodicFlush = periodicFlush;
+        return this;
+    }
+
+    public long getPeriodicFlushInterval() {
+        return periodicFlushInterval;
+    }
+
+    public NatsOptions setPeriodicFlushInterval(long periodicFlushInterval) {
+        this.periodicFlushInterval = periodicFlushInterval;
         return this;
     }
 }

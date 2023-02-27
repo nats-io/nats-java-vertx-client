@@ -2,6 +2,7 @@ package io.nats.vertx.impl;
 
 import io.nats.client.*;
 import io.nats.vertx.NatsClient;
+import io.nats.vertx.NatsOptions;
 import io.nats.vertx.NatsStream;
 import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 /**
@@ -20,22 +22,27 @@ import java.util.concurrent.TimeUnit;
 public class NatsClientImpl implements NatsClient {
     private static final Duration noWait = Duration.ofNanos(1);
     private final Vertx vertx;
-    private Connection connection;
+    private final boolean periodicFlush;
+    private AtomicReference<Connection> connection = new AtomicReference<>();
 
     private final ContextInternal context;
     private final Options options;
     private Promise<Void> connectFuture;
     private Handler<Throwable> exceptionHandler = event -> {};
 
+    private final long periodicFlushInterval;
+
     private final ConcurrentHashMap<String, Subscription> subscriptionMap = new ConcurrentHashMap<>();
 
     /**
      * Create new client implementation.
      * @param config config
-     * @param vertx vertx
+     * @param natsOptions natsOptions
      */
-    public NatsClientImpl(final Options.Builder config, final Vertx vertx) {
-        this.vertx = vertx;
+    public NatsClientImpl(final Options.Builder config, NatsOptions natsOptions) {
+        this.vertx = natsOptions.getVertx();
+        this.periodicFlush = natsOptions.isPeriodicFlush();
+        this.periodicFlushInterval = natsOptions.getPeriodicFlushInterval();
         context = (ContextInternal) vertx.getOrCreateContext();
         this.options = wireConnectListener(config, context);
     }
@@ -76,26 +83,38 @@ public class NatsClientImpl implements NatsClient {
     public Future<Void> connect() {
         vertx.executeBlocking(event -> {
             try {
-                connection = Nats.connect(options);
+                connection.set(Nats.connect(options));
             } catch (Exception e) {
                 handleException(connectFuture, e);
             }
         }, false);
 
-        vertx.setPeriodic(1000, new Handler<Long>() {
-            @Override
-            public void handle(Long event) {
-                try {
-                    if (connection != null && connection.getStatus() == Connection.Status.CONNECTED) {
-                        connection.flush(Duration.ofSeconds(1));
-                    }
-                } catch (Exception e) {
-                  exceptionHandler.handle(e);
-                }
-            }
-        });
+        if (periodicFlush) {
+            vertx.setTimer(periodicFlushInterval, event -> {
+                runFlush();
+            });
+        }
 
         return this.connectFuture.future();
+    }
+
+    private void runFlush() {
+        if (periodicFlush) {
+            vertx.executeBlocking(event -> {
+                try {
+
+                    final Connection conn = connection.get();
+                    if (conn != null && conn.getStatus() == Connection.Status.CONNECTED) {
+                        conn.flush(Duration.ofSeconds(1));
+                    }
+                    vertx.setTimer(periodicFlushInterval, timerEvent -> {
+                        runFlush();
+                    });
+                } catch (Exception e) {
+                    exceptionHandler.handle(e);
+                }
+            });
+        }
     }
 
     /**
@@ -108,8 +127,8 @@ public class NatsClientImpl implements NatsClient {
         vertx.executeBlocking(event -> {
             try {
 
-                final JetStream jetStream = connection.jetStream();
-                promise.complete(new NatsStreamImpl(jetStream, this.connection, context, vertx));
+                final JetStream jetStream = connection.get().jetStream();
+                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), context, vertx));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -128,8 +147,8 @@ public class NatsClientImpl implements NatsClient {
         final Promise<NatsStream> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                final JetStream jetStream = connection.jetStream(options);
-                promise.complete(new NatsStreamImpl(jetStream, this.connection, context, vertx));
+                final JetStream jetStream = connection.get().jetStream(options);
+                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), context, vertx));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -158,7 +177,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                connection.publish(data);
+                connection.get().publish(data);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -177,7 +196,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                connection.publish(data);
+                connection.get().publish(data);
                 promise.complete();
                 handler.handle(promise.future());
             } catch (Exception e) {
@@ -196,7 +215,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                connection.close();
+                connection.get().close();
                 promise.complete();
                 handler.handle(promise.future());
             } catch (Exception e) {
@@ -246,7 +265,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                connection.publish(subject, replyTo, message);
+                connection.get().publish(subject, replyTo, message);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -265,7 +284,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                connection.publish(subject, message);
+                connection.get().publish(subject, message);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -291,7 +310,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Message> promise = context.promise();
         vertx.executeBlocking((Handler<Promise<Void>>) event -> {
             try {
-                final CompletableFuture<Message> request = connection.request(data);
+                final CompletableFuture<Message> request = connection.get().request(data);
                 final Message message = request.get();
                 promise.complete(message);
                 handler.handle(promise.future());
@@ -307,7 +326,7 @@ public class NatsClientImpl implements NatsClient {
     public Future<Message> request(Message data) {
         return vertx.executeBlocking(event -> {
             try {
-                final CompletableFuture<Message> request = connection.request(data);
+                final CompletableFuture<Message> request = connection.get().request(data);
                 final Message message = request.get();
                 event.complete(message);
             } catch (Exception e) {
@@ -325,7 +344,7 @@ public class NatsClientImpl implements NatsClient {
     public Future<Message> request(String subject, byte[] message) {
         return vertx.executeBlocking(event -> {
             try {
-                final CompletableFuture<Message> request = connection.request(subject, message);
+                final CompletableFuture<Message> request = connection.get().request(subject, message);
                 final Message result = request.get();
                 event.complete(result);
             } catch (Exception e) {
@@ -339,7 +358,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Message> promise = context.promise();
         vertx.executeBlocking((Handler<Promise<Void>>) event -> {
             try {
-                final CompletableFuture<Message> request = connection.request(data);
+                final CompletableFuture<Message> request = connection.get().request(data);
                 final Message message = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
                 promise.complete(message);
                 handler.handle(promise.future());
@@ -355,7 +374,7 @@ public class NatsClientImpl implements NatsClient {
     public Future<Message> request(final Message data, final Duration timeout) {
         return vertx.executeBlocking(event -> {
             try {
-                final CompletableFuture<Message> request = connection.request(data);
+                final CompletableFuture<Message> request = connection.get().request(data);
                 final Message message = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
                 event.complete(message);
             } catch (Exception e) {
@@ -373,7 +392,7 @@ public class NatsClientImpl implements NatsClient {
     public Future<Message> request(final String subject, final byte[] message, final Duration timeout) {
         return vertx.executeBlocking(event -> {
             try {
-                final CompletableFuture<Message> request = connection.request(subject, message);
+                final CompletableFuture<Message> request = connection.get().request(subject, message);
                 final Message result = request.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
                 event.complete(result);
             } catch (Exception e) {
@@ -389,7 +408,7 @@ public class NatsClientImpl implements NatsClient {
         vertx.executeBlocking(event -> {
             try {
 
-                final Subscription subscribe = connection.subscribe(subject);
+                final Subscription subscribe = connection.get().subscribe(subject);
                 subscriptionMap.put(subject, subscribe);
                 vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe, subject));
                 promise.complete();
@@ -425,7 +444,7 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context.promise();
         vertx.executeBlocking(event -> {
             try {
-                final Subscription subscribe = connection.subscribe(subject, queue);
+                final Subscription subscribe = connection.get().subscribe(subject, queue);
                 subscriptionMap.put(subject, subscribe);
                 vertx.executeBlocking(event1 -> drainSubscription(handler, subscribe, subject), false);
                 promise.complete();
@@ -457,6 +476,6 @@ public class NatsClientImpl implements NatsClient {
 
     @Override
     public Connection getConnection() {
-        return this.connection;
+        return this.connection.get();
     }
 }
