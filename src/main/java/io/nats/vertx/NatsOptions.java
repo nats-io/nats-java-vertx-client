@@ -1,6 +1,7 @@
 package io.nats.vertx;
 
 import io.nats.client.Options;
+import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 
 /** Holds the NATS options. */
@@ -8,8 +9,11 @@ public class NatsOptions {
     private Options.Builder natsBuilder;
     private Vertx vertx;
 
+    private Context context;
+
     private boolean periodicFlush;
     private long periodicFlushInterval;
+
 
     /** Get the NATS builder.
      *

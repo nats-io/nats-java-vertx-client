@@ -21,16 +21,12 @@ import java.util.stream.Collectors;
 public class NatsStreamImpl implements NatsStream {
 
     private final JetStream jetStream;
-    private final ContextInternal context;
     private final Vertx vertx;
 
     private final ConcurrentHashMap<String, Dispatcher> dispatcherMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, JetStreamSubscription> subscriptionMap = new ConcurrentHashMap<>();
 
 
-    private static final Duration noWait = Duration.ofNanos(1);
-
-    private static final Duration drainWait = Duration.ofMillis(50);
     private final Connection connection;
 
     private Handler<Throwable> exceptionHandler = event -> {
@@ -40,33 +36,35 @@ public class NatsStreamImpl implements NatsStream {
      * Create instance
      * @param jetStream jetStream
      * @param connection Nats connection
-     * @param contextInternal vertx context
      * @param vertx vertx
      */
-    public NatsStreamImpl(final JetStream jetStream, final Connection connection, final ContextInternal contextInternal, final Vertx vertx) {
+    public NatsStreamImpl(final JetStream jetStream, final Connection connection,  final Vertx vertx) {
 
         this.connection = connection;
         this.jetStream = jetStream;
-        this.context = contextInternal;
         this.vertx = vertx;
+    }
+
+    private ContextInternal context() {
+        return (ContextInternal)  vertx.getOrCreateContext();
     }
 
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
-        vertx.executeBlocking(event -> this.exceptionHandler = handler, false);
+        context().executeBlocking(event -> this.exceptionHandler = handler, false);
         return this;
     }
 
     @Override
     public Future<Void> write(Message data) {
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
         doPublish(data, promise);
         return promise.future();
     }
 
     @Override
     public void write(Message data, Handler<AsyncResult<Void>> handler) {
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
         doPublish(data, promise);
         handler.handle(promise.future());
 
@@ -90,7 +88,7 @@ public class NatsStreamImpl implements NatsStream {
     @Override
     public void end(Handler<AsyncResult<Void>> handler) {
         //No Op
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
         handler.handle(promise.future());
     }
 
@@ -111,7 +109,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<PublishAck> publish(final Message data) {
-        final Promise<PublishAck> promise = context.promise();
+        final Promise<PublishAck> promise = context().promise();
         try {
             PublishAck ack = jetStream.publish(data);
             promise.complete(ack);
@@ -128,7 +126,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<PublishAck> publish(final String subject, final byte[] message) {
-        final Promise<PublishAck> promise = context.promise();
+        final Promise<PublishAck> promise = context().promise();
         try {
             final PublishAck ack = jetStream.publish(subject, message);
             promise.complete(ack);
@@ -140,7 +138,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public void publish(Message data, Handler<AsyncResult<PublishAck>> handler) {
-        final Promise<PublishAck> promise = context.promise();
+        final Promise<PublishAck> promise = context().promise();
         try {
             PublishAck ack = jetStream.publish(data);
             promise.complete(ack);
@@ -152,7 +150,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
 
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
             @Override
@@ -165,7 +163,7 @@ public class NatsStreamImpl implements NatsStream {
                 return vertx;
             }
         });
-        vertx.executeBlocking(event -> {
+        context().executeBlocking(event -> {
             try {
 
                 final Dispatcher dispatcher = connection.createDispatcher();
@@ -182,7 +180,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
             @Override
             public Message message() {
@@ -194,7 +192,7 @@ public class NatsStreamImpl implements NatsStream {
             }
         });
 
-        vertx.executeBlocking(event -> {
+        context().executeBlocking(event -> {
             try {
 
                 final Dispatcher dispatcher = connection.createDispatcher();
@@ -213,14 +211,14 @@ public class NatsStreamImpl implements NatsStream {
     @Override
     public Future<Void> subscribe(final String subject, final Handler<NatsVertxMessage> handler, final PullSubscribeOptions so,
                                   final int batchSize) {
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
 
-        vertx.executeBlocking(evt -> {
+        context().executeBlocking(evt -> {
             try {
 
                 final JetStreamSubscription subscription = so != null ? jetStream.subscribe(subject, so) : jetStream.subscribe(subject);
                 subscriptionMap.put(subject, subscription);
-                vertx.executeBlocking(event -> {
+                context().executeBlocking(event -> {
                     try {
                         int messageCount = 0;
                         while (true) {
@@ -270,12 +268,12 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<Void> subscribe(final String subject, final Handler<NatsVertxMessage> handler) {
-        final Promise<Void> promise = context.promise();
-        vertx.executeBlocking(evt -> {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription subscription = jetStream.subscribe(subject);
                 subscriptionMap.put(subject, subscription);
-                vertx.executeBlocking(event -> {
+                context().executeBlocking(event -> {
                     try {
                         while (true) {
                             final Message message = subscription.nextMessage(Duration.ofMillis(10));
@@ -316,16 +314,16 @@ public class NatsStreamImpl implements NatsStream {
     public Future<Void> subscribeBatch(final String subject, final Handler<List<NatsVertxMessage>> handler,
                                        final int batchSize, final Duration batchDuration,
                                        final PullSubscribeOptions so) {
-        final Promise<Void> promise = context.promise();
+        final Promise<Void> promise = context().promise();
 
-        vertx.executeBlocking(evt -> {
+        context().executeBlocking(evt -> {
             try {
 
                 final JetStreamSubscription subscription = jetStream.subscribe(subject, so);
                 subscriptionMap.put(subject, subscription);
 
 
-                vertx.executeBlocking(event -> {
+                context().executeBlocking(event -> {
                     try {
                         while (true) {
 
@@ -372,8 +370,8 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<Void> unsubscribe(final String subject) {
-        final Promise<Void> promise = context.promise();
-        vertx.executeBlocking(event -> {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
             try {
                 final Dispatcher dispatcher = dispatcherMap.get(subject);
                 if (dispatcher == null) {
@@ -399,7 +397,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public Future<PublishAck> publish(Message data, PublishOptions options) {
-        final Promise<PublishAck> promise = context.promise();
+        final Promise<PublishAck> promise = context().promise();
         try {
             final PublishAck ack = jetStream.publish(data, options);
             promise.complete(ack);
