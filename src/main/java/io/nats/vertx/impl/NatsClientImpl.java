@@ -7,7 +7,6 @@ import io.nats.vertx.NatsStream;
 import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
-import org.checkerframework.checker.units.qual.A;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
