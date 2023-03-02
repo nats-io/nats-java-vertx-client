@@ -30,14 +30,10 @@ repositories {
 
 
 dependencies {
-    // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api 'org.apache.commons:commons-math3:3.6.1'
-
-    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation 'com.google.guava:guava:31.0.1-jre'
 
     implementation 'io.nats:jnats:2.16.8'
-
+    implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
+    implementation("io.netty:netty-handler:4.1.89.Final")
     implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))
     implementation("io.vertx:vertx-core")
     testImplementation("io.vertx:vertx-junit5")
