@@ -10,7 +10,7 @@ plugins {
 
 }
 
-def jarVersion = "1.1.0.1-beta8"
+def jarVersion = "1.1.1-beta9"
 group = 'io.nats'
 
 def isMerge = System.getenv("BUILD_EVENT") == "push"
@@ -41,16 +41,6 @@ dependencies {
     implementation 'io.nats:jnats-server-runner:1.0.9'
 
 }
-
-//testing {
-//    suites {
-//        // Configure the built-in test suite
-//        test {
-//            // Use JUnit Jupiter test framework
-//            useJUnitJupiter('5.8.2')
-//        }
-//    }
-//}
 
 test {
     useJUnitPlatform()
