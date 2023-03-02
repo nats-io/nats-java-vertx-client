@@ -52,7 +52,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
-
+        exceptionHandler.set(handler);
         return this;
     }
 
@@ -108,15 +108,18 @@ public class NatsStreamImpl implements NatsStream {
         return this;
     }
 
+
     @Override
     public Future<PublishAck> publish(final Message data) {
         final Promise<PublishAck> promise = context().promise();
-        try {
-            PublishAck ack = jetStream.publish(data);
-            promise.complete(ack);
-        } catch (Exception e) {
-            handleException(promise, e);
-        }
+        context().executeBlocking(event -> {
+            try {
+                PublishAck ack = jetStream.publish(data);
+                promise.complete(ack);
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
         return promise.future();
     }
 
@@ -128,25 +131,45 @@ public class NatsStreamImpl implements NatsStream {
     @Override
     public Future<PublishAck> publish(final String subject, final byte[] message) {
         final Promise<PublishAck> promise = context().promise();
-        try {
-            final PublishAck ack = jetStream.publish(subject, message);
-            promise.complete(ack);
-        } catch (Exception e) {
-            handleException(promise, e);
-        }
+
+        context().executeBlocking(event -> {
+            try {
+                final PublishAck ack = jetStream.publish(subject, message);
+                promise.complete(ack);
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+
         return promise.future();
     }
 
     @Override
     public void publish(Message data, Handler<AsyncResult<PublishAck>> handler) {
         final Promise<PublishAck> promise = context().promise();
-        try {
-            PublishAck ack = jetStream.publish(data);
-            promise.complete(ack);
-        } catch (Exception e) {
-            handleException(promise, e);
-        }
+        context().executeBlocking(event -> {
+            try {
+                PublishAck ack = jetStream.publish(data);
+                promise.complete(ack);
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
         handler.handle(promise.future());
+    }
+
+    @Override
+    public Future<PublishAck> publish(Message data, PublishOptions options) {
+        final Promise<PublishAck> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                final PublishAck ack = jetStream.publish(data, options);
+                promise.complete(ack);
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
     }
 
     @Override
@@ -172,8 +195,7 @@ public class NatsStreamImpl implements NatsStream {
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.get().handle(e);
+                handleException(promise, e);
             }
         }, false);
         return promise.future();
@@ -195,14 +217,12 @@ public class NatsStreamImpl implements NatsStream {
 
         context().executeBlocking(event -> {
             try {
-
                 final Dispatcher dispatcher = connection.createDispatcher();
                 jetStream.subscribe(subject, queue, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.get().handle(e);
+                handleException(promise, e);
             }
         }, false);
         return promise.future();
@@ -259,8 +279,7 @@ public class NatsStreamImpl implements NatsStream {
                 }, false);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.get().handle(e);
+                handleException(promise, e);
             }
         }, false);
         return promise.future();
@@ -304,8 +323,7 @@ public class NatsStreamImpl implements NatsStream {
                 }, false);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.get().handle(e);
+                handleException(promise, e);
             }
         }, false);
         return promise.future();
@@ -362,8 +380,7 @@ public class NatsStreamImpl implements NatsStream {
                 }, false);
                 promise.complete();
             } catch (Exception e) {
-                promise.fail(e);
-                exceptionHandler.get().handle(e);
+                handleException(promise, e);
             }
         }, false);
         return promise.future();
@@ -396,19 +413,9 @@ public class NatsStreamImpl implements NatsStream {
         return promise.future();
     }
 
-    @Override
-    public Future<PublishAck> publish(Message data, PublishOptions options) {
-        final Promise<PublishAck> promise = context().promise();
-        try {
-            final PublishAck ack = jetStream.publish(data, options);
-            promise.complete(ack);
-        } catch (Exception e) {
-            handleException(promise, e);
-        }
-        return promise.future();
-    }
 
     private void handleException(Promise<?> promise, Exception e) {
         promise.fail(e);
+        exceptionHandler.get().handle(e);
     }
 }

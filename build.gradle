@@ -10,7 +10,7 @@ plugins {
 
 }
 
-def jarVersion = "1.0.0.0-beta"
+def jarVersion = "1.1.0.0-beta7"
 group = 'io.nats'
 
 def isMerge = System.getenv("BUILD_EVENT") == "push"
@@ -36,9 +36,9 @@ dependencies {
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation 'com.google.guava:guava:31.0.1-jre'
 
-    implementation 'io.nats:jnats:2.16.0'
+    implementation 'io.nats:jnats:2.16.8'
 
-    implementation(platform("io.vertx:vertx-stack-depchain:4.3.3"))
+    implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))
     implementation("io.vertx:vertx-core")
     testImplementation("io.vertx:vertx-junit5")
     implementation("io.netty:netty-resolver-dns-native-macos:4.1.80.Final:osx-x86_64")

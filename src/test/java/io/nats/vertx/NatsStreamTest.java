@@ -812,6 +812,7 @@ public class NatsStreamTest {
         final NatsStream jetStreamSub = getJetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(5);
+        final CountDownLatch errorsLatch = new CountDownLatch(5);
 
 
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
@@ -838,22 +839,27 @@ public class NatsStreamTest {
                     ).onFailure(error -> {
                         System.out.println("ERROR " + errors.get());
                         errors.incrementAndGet();
+                        errorsLatch.countDown();
                     });
 
 
             if (i == 4) {
                 Thread.sleep(1000);
                 natsServerRunner.close();
+                Thread.sleep(1000);
             }
         }
 
         Thread.sleep(200);
         receiveLatch.await(1, TimeUnit.SECONDS);
+        errorsLatch.await(10, TimeUnit.SECONDS);
 
         assertEquals(5, queue.size());
-        assertEquals(5, errors.get());
-        assertEquals(5, sends.get());
+
         assertTrue(errorsFromHandler.get() > 5);
+        assertEquals(5, sends.get());
+        assertEquals(5, errors.get());
+
 
         final CountDownLatch endLatch = new CountDownLatch(2);
         clientPub.end().onSuccess(event -> endLatch.countDown());
