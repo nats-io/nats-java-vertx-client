@@ -10,6 +10,7 @@ import io.nats.client.support.Status;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.ContextInternal;
 
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
@@ -21,8 +22,12 @@ public interface NatsVertxMessage extends Message{
     Message message();
 
     /** Reference to the vertx vertical where Futures are scheduled.
-     * TODO change this to use context technique.  */
+     */
     Vertx vertx();
+
+    default ContextInternal context() {
+        return (ContextInternal)  vertx().getOrCreateContext();
+    }
 
     /**
      * Acknowledge the message as processed successfully.
@@ -32,7 +37,7 @@ public interface NatsVertxMessage extends Message{
         // This now returns a future that is truly async by running the code in the vertx thread context.
         // Ack by default does not block, but does IO so could introduce a wait state.
         final Promise<Void> promise = Promise.promise();
-        vertx().executeBlocking(event -> {
+        context().executeBlocking(event -> {
             try {
                 message().ack();
                 promise.complete();
@@ -50,7 +55,7 @@ public interface NatsVertxMessage extends Message{
     default Future<Void> nakAsync() {
         final Promise<Void> promise = Promise.promise();
         // This now returns a future that is truly async by running the code in the vertx thread context.
-        vertx().executeBlocking(event -> {
+        context().executeBlocking(event -> {
             try {
                 message().nak();
                 promise.complete();
@@ -71,7 +76,7 @@ public interface NatsVertxMessage extends Message{
         // which executes with a thread pool separate from the event loop IO context of vert.x.
         // because we can't block the vert.x IO event loop.
         final Promise<Void> promise = Promise.promise();
-        vertx().executeBlocking(event -> {
+        context().executeBlocking(event -> {
             try {
                 message().nakWithDelay(nakDelay);
                 promise.complete();
@@ -92,7 +97,7 @@ public interface NatsVertxMessage extends Message{
         // This now returns a future that is truly async by running the code using vertx executeBlocking
         // which executes with a thread pool separate from the event loop IO context of vert.x.
         // because we can't block the vert.x IO event loop.
-        vertx().executeBlocking(event -> {
+        context().executeBlocking(event -> {
             try {
                 message().ackSync(ackDelay);
                 promise.complete();

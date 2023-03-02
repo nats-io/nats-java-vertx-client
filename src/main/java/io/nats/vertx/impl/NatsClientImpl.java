@@ -7,6 +7,7 @@ import io.nats.vertx.NatsStream;
 import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
+import org.checkerframework.checker.units.qual.A;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -27,7 +28,7 @@ public class NatsClientImpl implements NatsClient {
 
     private final Options options;
     private Promise<Void> connectFuture;
-    private Handler<Throwable> exceptionHandler = event -> {};
+    private AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>(Throwable::printStackTrace);
 
     private final long periodicFlushInterval;
 
@@ -43,6 +44,8 @@ public class NatsClientImpl implements NatsClient {
         this.periodicFlush = natsOptions.isPeriodicFlush();
         this.periodicFlushInterval = natsOptions.getPeriodicFlushInterval();
         this.options = wireConnectListener(config, context());
+        if (natsOptions.getExceptionHandler()!=null)
+        this.exceptionHandler.set(natsOptions.getExceptionHandler());
     }
 
     private ContextInternal context() {
@@ -113,7 +116,7 @@ public class NatsClientImpl implements NatsClient {
                         runFlush();
                     });
                 } catch (Exception e) {
-                    exceptionHandler.handle(e);
+                    exceptionHandler.get().handle(e);
                 }
             });
         }
@@ -130,7 +133,7 @@ public class NatsClientImpl implements NatsClient {
             try {
 
                 final JetStream jetStream = connection.get().jetStream();
-                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), vertx));
+                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), vertx, exceptionHandler.get()));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -151,7 +154,7 @@ public class NatsClientImpl implements NatsClient {
         context().executeBlocking(event -> {
             try {
                 final JetStream jetStream = connection.get().jetStream(options);
-                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), vertx));
+                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), vertx, exceptionHandler.get()));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -166,7 +169,7 @@ public class NatsClientImpl implements NatsClient {
      */
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
-        context().executeBlocking(event -> this.exceptionHandler = handler, false);
+        this.exceptionHandler.set(handler);
         return this;
     }
 
@@ -298,14 +301,14 @@ public class NatsClientImpl implements NatsClient {
 
     private void handleException(Promise<?> promise, Exception e) {
         promise.fail(e);
-        exceptionHandler.handle(e);
+        exceptionHandler.get().handle(e);
     }
 
     private void handleExceptionWithHandler(Handler<AsyncResult<Void>> handler,
                                             Promise<Void> promise, Exception e) {
         promise.fail(e);
         handler.handle(promise.future());
-        exceptionHandler.handle(e);
+        exceptionHandler.get().handle(e);
     }
 
     @Override
@@ -320,7 +323,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 promise.fail(e);
                 handler.handle(promise.future());
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
     }
@@ -368,7 +371,7 @@ public class NatsClientImpl implements NatsClient {
             } catch (Exception e) {
                 promise.fail(e);
                 handler.handle(promise.future());
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
     }
@@ -431,14 +434,14 @@ public class NatsClientImpl implements NatsClient {
                 try {
                     handler.handle(message);
                 } catch (Exception e) {
-                    exceptionHandler.handle(e);
+                    exceptionHandler.get().handle(e);
                 }
                 message = subscribe.nextMessage(noWait);
             }
             if (subscriptionMap.containsKey(subject))
             context().setTimer(100, event -> context().executeBlocking(e -> drainSubscription(handler, subscribe, subject), false));
         } catch (Exception e) {
-            exceptionHandler.handle(e);
+            exceptionHandler.get().handle(e);
         }
     }
 

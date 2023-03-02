@@ -16,9 +16,11 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class NatsStreamTest {
@@ -384,9 +386,10 @@ public class NatsStreamTest {
         endLatch.await(3, TimeUnit.SECONDS);
     }
 
-    private NatsClient getNatsClient() throws InterruptedException {
+    private NatsClient getNatsClient(Handler<Throwable> exceptionHandler) throws InterruptedException {
         final NatsOptions natsOptions = new NatsOptions();
         natsOptions.setVertx(Vertx.vertx());
+        natsOptions.setExceptionHandler(exceptionHandler);
         natsOptions.setNatsBuilder(new Options.Builder());
         natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port}).connectionListener(new ConnectionListener() {
             @Override
@@ -418,6 +421,9 @@ public class NatsStreamTest {
             throw new IllegalStateException(error.get());
         }
         return natsClient;
+    }
+    private NatsClient getNatsClient() throws InterruptedException {
+            return getNatsClient(event -> event.printStackTrace());
     }
 
 
@@ -790,6 +796,70 @@ public class NatsStreamTest {
         endLatch.await(3, TimeUnit.SECONDS);
     }
 
+    @Test
+    public void testPubSubFailsAndFutureGetsCalled() throws InterruptedException {
+
+        final AtomicInteger sends = new AtomicInteger();
+        final AtomicInteger errors = new AtomicInteger();
+        final AtomicInteger errorsFromHandler = new AtomicInteger();
+
+        final NatsClient clientPub = getNatsClient(event -> {
+            errorsFromHandler.incrementAndGet();
+        } );
+        final NatsClient clientSub = getNatsClient();
+
+        final NatsStream jetStreamPub = getJetStream(clientPub);
+        final NatsStream jetStreamSub = getJetStream(clientSub);
+
+        final CountDownLatch receiveLatch = new CountDownLatch(5);
+
+
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
+        final String data = "data";
+
+        jetStreamSub.subscribe(SUBJECT_NAME, event -> {
+            queue.add(event.message());
+            receiveLatch.countDown();
+        }, true, PushSubscribeOptions.builder().build());
+
+        for (int i = 0; i < 10; i++) {
+
+
+            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
+                    .data(data + i, StandardCharsets.UTF_8)
+                    .build();
+
+            jetStreamPub.publish(SUBJECT_NAME, data + i)
+                    .onSuccess(event -> {
+
+                                sends.incrementAndGet();
+                                System.out.println("SUCCESS " + sends.get());
+                            }
+                    ).onFailure(error -> {
+                        System.out.println("ERROR " + errors.get());
+                        errors.incrementAndGet();
+                    });
+
+
+            if (i == 4) {
+                Thread.sleep(1000);
+                natsServerRunner.close();
+            }
+        }
+
+        Thread.sleep(200);
+        receiveLatch.await(1, TimeUnit.SECONDS);
+
+        assertEquals(5, queue.size());
+        assertEquals(5, errors.get());
+        assertEquals(5, sends.get());
+        assertTrue(errorsFromHandler.get() > 5);
+
+        final CountDownLatch endLatch = new CountDownLatch(2);
+        clientPub.end().onSuccess(event -> endLatch.countDown());
+        clientSub.end().onSuccess(event -> endLatch.countDown());
+        endLatch.await(3, TimeUnit.SECONDS);
+    }
 
 
     @Test

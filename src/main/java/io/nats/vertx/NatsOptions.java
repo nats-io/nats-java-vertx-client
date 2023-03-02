@@ -1,19 +1,38 @@
 package io.nats.vertx;
 
+import io.nats.client.Connection;
+import io.nats.client.ErrorListener;
 import io.nats.client.Options;
-import io.vertx.core.Context;
+import io.nats.client.impl.ErrorListenerLoggerImpl;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 
 /** Holds the NATS options. */
 public class NatsOptions {
     private Options.Builder natsBuilder;
     private Vertx vertx;
-
-    private Context context;
-
     private boolean periodicFlush;
     private long periodicFlushInterval;
+    private boolean autoReconnect = false;
+    private Handler<Throwable> exceptionHandler;
 
+    public Handler<Throwable> getExceptionHandler() {
+        return exceptionHandler;
+    }
+
+    public NatsOptions setExceptionHandler(Handler<Throwable> exceptionHandler) {
+        this.exceptionHandler = exceptionHandler;
+        return this;
+    }
+
+    public boolean isAutoReconnect() {
+        return autoReconnect;
+    }
+
+    public NatsOptions setAutoReconnect(boolean autoReconnect) {
+        this.autoReconnect = autoReconnect;
+        return this;
+    }
 
     /** Get the NATS builder.
      *
@@ -22,8 +41,47 @@ public class NatsOptions {
     public Options.Builder getNatsBuilder() {
         if (natsBuilder == null) {
             natsBuilder = new Options.Builder();
+            if (!isAutoReconnect()) {
+                natsBuilder.noReconnect();
+            }
         }
+        configureExceptionHandler();
         return natsBuilder;
+    }
+
+    private void configureExceptionHandler() {
+        if (getExceptionHandler()!=null) {
+            final Handler<Throwable> exceptionHandler = getExceptionHandler();
+            if (!(natsBuilder.build().getErrorListener() instanceof ErrorListenerLoggerImpl)) {
+
+                natsBuilder.errorListener(new ErrorListener() {
+                    @Override
+                    public void errorOccurred(Connection conn, String error) {
+                        exceptionHandler.handle(new IllegalStateException(error));
+                    }
+
+                    @Override
+                    public void exceptionOccurred(Connection conn, Exception exp) {
+                        exceptionHandler.handle(new IllegalStateException(exp));
+                    }
+                });
+            } else {
+                ErrorListener errorListener = natsBuilder.build().getErrorListener();
+                natsBuilder.errorListener(new ErrorListener() {
+                    @Override
+                    public void errorOccurred(Connection conn, String error) {
+                        errorListener.errorOccurred(conn, error);
+                        exceptionHandler.handle(new IllegalStateException(error));
+                    }
+
+                    @Override
+                    public void exceptionOccurred(Connection conn, Exception exp) {
+                        errorListener.exceptionOccurred(conn, exp);
+                        exceptionHandler.handle(new IllegalStateException(exp));
+                    }
+                });
+            }
+        }
     }
 
     /**

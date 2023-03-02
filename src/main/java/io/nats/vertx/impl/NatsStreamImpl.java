@@ -13,6 +13,7 @@ import java.time.Duration;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -29,20 +30,20 @@ public class NatsStreamImpl implements NatsStream {
 
     private final Connection connection;
 
-    private Handler<Throwable> exceptionHandler = event -> {
-    };
-
+    private final AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>();
     /**
      * Create instance
      * @param jetStream jetStream
      * @param connection Nats connection
      * @param vertx vertx
      */
-    public NatsStreamImpl(final JetStream jetStream, final Connection connection,  final Vertx vertx) {
+    public NatsStreamImpl(final JetStream jetStream, final Connection connection,  final Vertx vertx,
+                          final Handler<Throwable> exceptionHandler) {
 
         this.connection = connection;
         this.jetStream = jetStream;
         this.vertx = vertx;
+        this.exceptionHandler.set(exceptionHandler);
     }
 
     private ContextInternal context() {
@@ -51,7 +52,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public WriteStream<Message> exceptionHandler(Handler<Throwable> handler) {
-        context().executeBlocking(event -> this.exceptionHandler = handler, false);
+
         return this;
     }
 
@@ -172,7 +173,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.complete();
             } catch (Exception e) {
                 promise.fail(e);
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
         return promise.future();
@@ -201,7 +202,7 @@ public class NatsStreamImpl implements NatsStream {
                 promise.complete();
             } catch (Exception e) {
                 promise.fail(e);
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
         return promise.future();
@@ -253,13 +254,13 @@ public class NatsStreamImpl implements NatsStream {
                         }
                     } catch (Exception e) {
                         promise.fail(e);
-                        exceptionHandler.handle(e);
+                        exceptionHandler.get().handle(e);
                     }
                 }, false);
                 promise.complete();
             } catch (Exception e) {
                 promise.fail(e);
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
         return promise.future();
@@ -298,13 +299,13 @@ public class NatsStreamImpl implements NatsStream {
                         }
                     } catch (Exception e) {
                         promise.fail(e);
-                        exceptionHandler.handle(e);
+                        exceptionHandler.get().handle(e);
                     }
                 }, false);
                 promise.complete();
             } catch (Exception e) {
                 promise.fail(e);
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
         return promise.future();
@@ -356,13 +357,13 @@ public class NatsStreamImpl implements NatsStream {
                         }
                     } catch (Exception e) {
                         promise.fail(e);
-                        exceptionHandler.handle(e);
+                        exceptionHandler.get().handle(e);
                     }
                 }, false);
                 promise.complete();
             } catch (Exception e) {
                 promise.fail(e);
-                exceptionHandler.handle(e);
+                exceptionHandler.get().handle(e);
             }
         }, false);
         return promise.future();
@@ -409,6 +410,5 @@ public class NatsStreamImpl implements NatsStream {
 
     private void handleException(Promise<?> promise, Exception e) {
         promise.fail(e);
-        throw new RuntimeException(e);
     }
 }
