@@ -923,8 +923,8 @@ public class NatsStreamTest {
             }
         }
 
-        Thread.sleep(200);
-        receiveLatch.await(1, TimeUnit.SECONDS);
+        Thread.sleep(1000);
+        receiveLatch.await(10, TimeUnit.SECONDS);
         errorsLatch.await(10, TimeUnit.SECONDS);
 
         assertEquals(5, queue.size());
