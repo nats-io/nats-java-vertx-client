@@ -36,7 +36,7 @@ public interface NatsVertxMessage extends Message{
     default Future<Void> ackAsync() {
         // This now returns a future that is truly async by running the code in the vertx thread context.
         // Ack by default does not block, but does IO so could introduce a wait state.
-        final Promise<Void> promise = Promise.promise();
+        final Promise<Void> promise = context().promise();
         context().executeBlocking(event -> {
             try {
                 message().ack();
@@ -53,7 +53,7 @@ public interface NatsVertxMessage extends Message{
      * @return Future
      */
     default Future<Void> nakAsync() {
-        final Promise<Void> promise = Promise.promise();
+        final Promise<Void> promise = context().promise();
         // This now returns a future that is truly async by running the code in the vertx thread context.
         context().executeBlocking(event -> {
             try {
@@ -75,7 +75,7 @@ public interface NatsVertxMessage extends Message{
         // This now returns a future that is truly async by running the code using vertx executeBlocking
         // which executes with a thread pool separate from the event loop IO context of vert.x.
         // because we can't block the vert.x IO event loop.
-        final Promise<Void> promise = Promise.promise();
+        final Promise<Void> promise = context().promise();
         context().executeBlocking(event -> {
             try {
                 message().nakWithDelay(nakDelay);
@@ -93,7 +93,7 @@ public interface NatsVertxMessage extends Message{
      * @return Future
      */
     default Future<Void> ackWithDelayAsync(final Duration ackDelay) {
-        final Promise<Void> promise = Promise.promise();
+        final Promise<Void> promise = context().promise();
         // This now returns a future that is truly async by running the code using vertx executeBlocking
         // which executes with a thread pool separate from the event loop IO context of vert.x.
         // because we can't block the vert.x IO event loop.
