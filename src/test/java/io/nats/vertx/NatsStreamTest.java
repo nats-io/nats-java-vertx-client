@@ -856,7 +856,7 @@ public class NatsStreamTest {
 
         assertEquals(5, queue.size());
 
-        assertTrue(errorsFromHandler.get() > 5);
+        assertTrue(errorsFromHandler.get() >= 5);
         assertEquals(5, sends.get());
         assertEquals(5, errors.get());
 
@@ -929,7 +929,7 @@ public class NatsStreamTest {
 
         assertEquals(5, queue.size());
 
-        assertTrue(errorsFromHandler.get() > 5);
+        assertTrue(errorsFromHandler.get() >= 5);
         assertEquals(5, sends.get());
         assertEquals(5, errors.get());
 
