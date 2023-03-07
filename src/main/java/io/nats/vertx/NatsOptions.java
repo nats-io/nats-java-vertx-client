@@ -13,7 +13,7 @@ public class NatsOptions {
     private Vertx vertx;
     private boolean periodicFlush;
     private long periodicFlushInterval;
-    private boolean autoReconnect = false;
+
     private Handler<Throwable> exceptionHandler;
 
     public Handler<Throwable> getExceptionHandler() {
@@ -25,14 +25,6 @@ public class NatsOptions {
         return this;
     }
 
-    public boolean isAutoReconnect() {
-        return autoReconnect;
-    }
-
-    public NatsOptions setAutoReconnect(boolean autoReconnect) {
-        this.autoReconnect = autoReconnect;
-        return this;
-    }
 
     /** Get the NATS builder.
      *
@@ -41,9 +33,6 @@ public class NatsOptions {
     public Options.Builder getNatsBuilder() {
         if (natsBuilder == null) {
             natsBuilder = new Options.Builder();
-            if (!isAutoReconnect()) {
-                natsBuilder.noReconnect();
-            }
         }
         configureExceptionHandler();
         return natsBuilder;
