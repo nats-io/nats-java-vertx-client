@@ -1,9 +1,9 @@
 # Vert.x NATS client
 
-This component provides a NATS client for reading and sending messages from/to a 
+This component provides a NATS client for reading and sending messages from/to a
 [https://nats.io](NATS) server. The client supports both Core NATS as well as JetStream.
 
-The nats-java-vertx-client is a Java client library for connecting to NATS messaging system. It is built on top of 
+The nats-java-vertx-client is a Java client library for connecting to the NATS messaging system. It is built on top of
 the Vert.x event-driven framework and provides an asynchronous, non-blocking API for sending and receiving messages over NATS.
 
 ## Using the Vert.x NATS client
@@ -31,7 +31,7 @@ compile io.nats:nats-vertx-nats-interface:${maven.version}
 
 
 ## Connecting to NATS
-To connect to NATS, you first need to create a NatsClient object by specifying the NATS server URL 
+To connect to NATS, you must first create a NatsClient object by specifying the NATS server URL
 and any optional configuration options. Here is an example:
 
 ```java
@@ -46,12 +46,12 @@ and any optional configuration options. Here is an example:
 ```
 This code creates a NatsClient object, sets the configuration options, and connects to a NATS server.
 
-The first two lines create a new NatsOptions object and set the NATS server to connect to using the servers method of the NatsBuilder object. 
+The first two lines create a new NatsOptions object and set the NATS server to connect to using the servers method of the NatsBuilder object.
 In this case, the server is set to "localhost" and the port variable is used to specify the port number.
 
-The next two lines create a new NatsClient object using the create method and passing in the NatsOptions object as a parameter. 
-The connect method is then called on the NatsClient object to establish a connection to the NATS server. 
-This method returns a Future<Void> object, which represents the asynchronous result of the connection attempt.
+The following two lines create a new NatsClient object using the `create` method and passing in the NatsOptions object as a parameter.
+The connect method is then called on the NatsClient object to establish a connection to the NATS server.
+This method returns a Future<Void> object, representing the connection attempt's asynchronous result.
 
 ```java 
 
@@ -65,16 +65,16 @@ client.connect()
           System.out.println("Fail to connect to NATS " + err.getMessage()));
 ```
 
-This code creates a NatsClient object, sets the Vert.x instance, and connects to a NATS server using the Vert.x Future 
+This code creates a NatsClient object, and sets the Vert.x instance, and connects to a NATS server using the Vert.x Future
 interface to handle the asynchronous result.
 
-The first line creates a new NatsClient object using the create method and passing in a NatsOptions configuration 
-object as a parameter. In this case, the configuration object is created by setting the Vert.x instance to use with 
-the NATS client. vertx is an instance of the Vert.x class. 
-The next few lines establish a connection to the NATS server using the connect method of the NatsClient object. 
-This method returns a Future<Void> object, which represents the asynchronous result of the connection attempt. 
-The onSuccess and onFailure methods of the Future object are then called to handle the result of the connection attempt. 
-In this example, we're just printing a message to the console to indicate whether the connection succeeded or failed.
+Using the `create` method, the first line creates a new NatsClient object and passes in a NatsOptions configuration
+object as a parameter. In this case, the configuration object is created by setting the Vert.x instance to use with
+the NATS client. The vertx is an instance of the Vert.x class.
+The following few lines establish a connection to the NATS server using the connect method of the NatsClient object.
+This method returns a `Future<Void>` object, representing the connection attempt's asynchronous result.
+The `onSuccess` and `onFailure` methods of the Future object are then called (one or the other depending on outcome) to handle the result of the connection attempt.
+In this example, we just print a message to the console to indicate whether the connection succeeded or failed.
 
 ### Publishing
 
@@ -91,19 +91,19 @@ Once connected, publishing is accomplished via one of three methods:
         System.out.println("Something went wrong " + err.getMessage()));
 ```
 
-This code publishes a message to a NATS subject using the publish method of a NatsClient object, and handles the asynchronous 
+This code publishes a message to a NATS subject using the `publish` method of a `NatsClient` object, and handles the asynchronous
 result of the operation using the Vert.x Future interface.
 
-The publish method takes two parameters: the subject to publish the message to, and the message data as a byte array.
+The `publish` method takes two parameters: the subject to publish the message to, and the message data as a byte array.
 
-The onSuccess and onFailure methods are called on the Future object returned by the publish method, and are used to 
-handle the asynchronous result of the operation. In this example, we're just printing a message to the console to 
+The onSuccess and onFailure methods are called on the Future object returned by the `publish` method, and are used to
+handle the asynchronous result of the operation. In this example, we're just printing a message to the console to
 indicate whether the operation succeeded or failed.
 
-If the operation succeeds, the onSuccess method is called with a Void parameter. In this case, we're just printing the 
+If the operation succeeds, the `onSuccess` method is called with a Void parameter. In this case, we're just printing the
 message "Message published!" to the console.
 
-If the operation fails, the onFailure method is called with a Throwable parameter. In this case, we're just printing a 
+If the operation fails, the onFailure method is called with a Throwable parameter. In this case, we're just printing a
 message to the console that includes the error message returned by the Throwable object.
 
 
@@ -117,24 +117,23 @@ message to the console that includes the error message returned by the Throwable
         .onFailure(err ->   System.out.println("Something went wrong " + err.getMessage()));
 ```
 
-This code publishes a message to a NATS subject and specifies a reply-to subject to use for any responses received in 
+This code publishes a message to a NATS subject and specifies a reply-to subject to use for any responses received in
 reply to the message. It also handles the asynchronous result of the operation using the Vert.x Future interface.
 
-The publish method takes three parameters: the subject to publish the message to, the reply-to subject to use for any 
+The publish method takes three parameters: the subject to publish the message to, the reply-to subject to use for any
 responses, and the message data as a byte array.
 
-The onSuccess and onFailure methods are called on the Future object returned by the publish method, and are used to 
-handle the asynchronous result of the operation. In this example, we're just printing a message to the console to 
+The `onSuccess` and `onFailure` methods are called on the `Future` object returned by the `publish` method, and are used to
+handle the asynchronous result of the operation. In this example, we're just printing a message to the console to
 indicate whether the operation succeeded or failed.
 
-If the operation succeeds, the onSuccess method is called with a Void parameter. In this case, we're just printing the 
+If the operation succeeds, the `onSuccess` method is called with a Void parameter. In this case, we're just printing the
 message "Message published!" to the console.
 
-If the operation fails, the onFailure method is called with a Throwable parameter. In this case, we're just printing 
+If the operation fails, the `onFailure` method is called with a Throwable parameter. In this case, we're just printing
 a message to the console that includes the error message returned by the Throwable object.
 
-3) When a requests expects a reply, a response is provided. Under the covers as request/reply pair is the same as a
-        publish/subscribe only the library manages the subscription for you.
+3) When a request expects a reply, a response is provided. Under the covers as request/reply pair is the same as a publish/subscribe only the library manages the subscription for you.
 
 ```java
 
@@ -146,26 +145,26 @@ a message to the console that includes the error message returned by the Throwab
         System.out.println("Something went wrong " + err.getMessage()));
 ```
 
-When a request is made and a reply is expected, the NATS messaging system provides a response. This is achieved through 
-a request/reply pair, which is conceptually the same as a publish/subscribe pair, except the library handles the subscription for you.
+When a request is made and a reply is expected, the NATS messaging system provides a response. This is achieved through
+a request/reply pair. This is the same as a publish/subscribe pair, except the library handles the subscription for you.
 
-This code makes a request to a NATS subject and handles for a response using the request method of a NatsClient object, 
-and handles the asynchronous result of the operation using the Vert.x Future interface.
+This code makes a request to a NATS subject and handles a response using the request method of a NatsClient object,
+and handles the asynchronous result of the operation using the Vert.x `Future` interface.
 
-The request method takes two parameters: the subject to send the request to, and the message data as a byte array. 
-When a response is received, the onSuccess method is called with a Message parameter, which contains the response data as a byte array. 
+The request method takes two parameters: the subject to send the request to, and the message data as a byte array.
+When a response is received, the onSuccess method is called with a Message parameter, which contains the response data as a byte array.
 
 
-If the operation fails, the onFailure method is called with a Throwable parameter. In this case, we're just printing a 
+If the operation fails, the `onFailure` method is called with a `Throwable` parameter. In this case, we're just printing a
 message to the console that includes the error message returned by the Throwable object.
 
-All of these methods, as well as the incoming message code use byte arrays for maximum flexibility. 
-Applications can send JSON, Strings, YAML, Protocol Buffers, or any other format through NATS to 
+All of these methods, as well as the incoming message code use byte arrays for maximum flexibility.
+Applications can send JSON, Strings, YAML, Protocol Buffers, or any other format through NATS to
 applications written in a wide range of languages.
 
 ### Subscribing
 
-The Java NATS library also provides a mechanisms to listen for messages.
+The Java NATS library also provides a mechanism to listen to messages.
 
 ```java
 
@@ -186,9 +185,9 @@ client.unsubscribe(SUBJECT_NAME)
 
 ## JetStream
 
-Publishing and subscribing to JetStream enabled servers is straightforward. A JetStream enabled application 
-will connect to a server, establish a JetStream context, and then publish or subscribe. This can be mixed and matched 
-with standard NATS subject, and JetStream subscribers, depending on configuration, receive messages from 
+Publishing and subscribing to JetStream enabled servers is straightforward. A JetStream enabled application
+will connect to a server, establish a JetStream context, and then publish or subscribe. This can be mixed and matched
+with standard NATS subject, and JetStream subscribers, depending on configuration, receive messages from
 both streams and directly from other NATS producers.
 
 ### The JetStream Context
@@ -208,7 +207,7 @@ streamFuture.onSuccess(natsStream -> {
 
 You can pass options to configure the JetStream client, although the defaults should suffice for most users. See the JetStreamOptions class.
 
-There is no limit to the number of contexts used, although normally one would only require a single context.
+There is no limit to the number of contexts used, although normally, one would only require a single context.
 
 ### Publishing
 
@@ -238,7 +237,7 @@ jetStreamSub.subscribe(SUBJECT_NAME, event -> {
         
 ```
 
-To unsubscribe from JetStream the interface is similar to unsubscribing to a NATS subscription. 
+To unsubscribe from JetStream the interface is similar to unsubscribing to a NATS subscription.
 
 
 ```java
@@ -246,10 +245,10 @@ To unsubscribe from JetStream the interface is similar to unsubscribing to a NAT
                 .onFailure(Throwable::printStackTrace);
 ```
 
-There are a variety of publish options that can be set when publishing. 
-When duplicate checking has been enabled on the stream, a message ID should be set. 
-One set of options are expectations. You can set a publish expectation such as a particular stream name, 
-previous message ID, or previous sequence number. These are hints to the server that it should reject messages 
+There are a variety of publish options that can be set when publishing.
+When duplicate checking has been enabled on the stream, a message ID should be set.
+One set of options is expectations. You can set a publish expectation such as a particular stream name,
+previous message ID, or previous sequence number. These are hints to the server that it should reject messages
 where these are not met, primarily for enforcing your ordering or ensuring messages are not stored on the wrong stream.
 
 ```java
@@ -292,7 +291,7 @@ System.out.println("Something went wrong " + err.getMessage()));
 
 #### Pull Subscribing
 
-Pull subscriptions are always synchronous. The server organizes messages into a batch which it sends when requested.
+Pull subscriptions are always synchronous. The server organizes messages into a batch that it sends when requested.
 
 ```java 
 PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
@@ -319,10 +318,10 @@ JetStreamSubscription sub = done.result()
       System.out.println("Something went wrong " + err.getMessage()));
 ```
 
-The fetch pull is a macro pull that uses advanced pulls under the covers to return a list of messages. 
-The list may be empty or contain at most the batch size. All status messages are handled for you. 
-The client can provide a timeout to wait for the first message in a batch. 
-The timeout may be exceeded if the server sent messages very near the end of the timeout period.
+The fetch pull is a macro pull that uses advanced pulls under the covers to return a list of messages.
+The list may be empty or contain at most the batch size. All status messages are handled for you.
+The client can provide a timeout to wait for the first message in a batch.
+The timeout may be exceeded if the server sends messages very near the end of the timeout period.
 
 #### Ordered Push Subscription Option
 
@@ -334,19 +333,19 @@ See https://github.com/nats-io/nats.java#subscription-creation-checks
 
 #### Message Acknowledgements
 
-There are multiple types of acknowledgements in JetStream:
+There are multiple types of acknowledgments in JetStream:
 
 * `Message.ackAsync()`: Acknowledges a message.
-* `Message.ackSync(Duration)`: Acknowledges a message and waits for a confirmation. When used with deduplications this creates exactly once delivery guarantees (within the deduplication window). This may significantly impact performance of the system.
-* `Message.nakAsync()`: A negative acknowledgment indicating processing failed and the message should be resent later.
+* `Message.ackSync(Duration)`: Acknowledges a message and waits for a confirmation. When used with deduplications, this creates exactly once delivery guarantees (within the deduplication window). This deduplication may significantly impact the performance of the system.
+* `Message.nakAsync()`: A negative acknowledgment indicating processing failed, and the message should be resent later.
 * `Message.termAsync()`: Never send this message again, regardless of configuration.
-* `Message.inProgressAsync()`: The message is being processed and reset the redelivery timer in the server. The message must be acknowledged later when processing is complete.
+* `Message.inProgressAsync()`: The message is being processed, and reset the redelivery timer in the server. The message must be acknowledged later when processing is complete.
 
 Note that exactly once delivery guarantee can be achieved by using a consumer with explicit ack mode attached to stream setup with a deduplication window and using the ackSync to acknowledge messages. The guarantee is only valid for the duration of the deduplication window.
 
-You should always use the async versions of the methods when running in the vert.x event loop. 
+You should always use the async versions of the methods when running in the vert.x event loop.
 
 ## Conclusion
-The nats-java-vertx-client library provides a simple and easy-to-use API for connecting to NATS messaging system from 
-Java applications, using the Vert.x interface. With the asynchronous, non-blocking API and Vert.x event-driven framework, 
+The nats-java-vertx-client library provides a simple and easy-to-use API for connecting to NATS messaging system from
+Java applications, using the Vert.x interface. With the asynchronous, non-blocking API and Vert.x event-driven framework,
 it is well-suited for building high-performance, scalable messaging applications.
