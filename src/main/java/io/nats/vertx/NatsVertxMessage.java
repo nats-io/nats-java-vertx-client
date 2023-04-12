@@ -224,7 +224,32 @@ public interface NatsVertxMessage extends Message{
 
     @Override
     default void inProgress() {
-        message().term();
+        message().inProgress();
+    }
+
+    default Future<Void> inProgressAsync() {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                message().inProgress();
+                promise.complete();
+            } catch (Throwable e){
+                promise.tryFail(e);
+            }
+        }, false);
+        return promise.future();
+    }
+    default Future<Void> termAsync() {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                message().term();
+                promise.complete();
+            } catch (Throwable e){
+                promise.tryFail(e);
+            }
+        }, false);
+        return promise.future();
     }
 
     @Override
