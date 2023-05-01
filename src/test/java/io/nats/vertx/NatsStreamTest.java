@@ -4,6 +4,7 @@ import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
+import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -746,6 +747,93 @@ public class NatsStreamTest {
                     .data(data + i, StandardCharsets.UTF_8)
                     .build();
             jetStreamPub.publish(message, PublishOptions.builder().build()).onSuccess(event -> sendLatch.countDown());
+        }
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
+
+        assertEquals(10, queue.size());
+
+        final CountDownLatch endLatch = new CountDownLatch(2);
+        clientPub.end().onSuccess(event -> endLatch.countDown());
+        clientSub.end().onSuccess(event -> endLatch.countDown());
+        endLatch.await(3, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testPubMessageOptionsSubWithHeaders() throws InterruptedException {
+
+        final NatsClient clientPub = getNatsClient();
+        final NatsClient clientSub = getNatsClient();
+        final Headers headers = new Headers().put("foo", "bar");
+
+        final NatsStream jetStreamPub = getJetStream(clientPub);
+        final NatsStream jetStreamSub = getJetStream(clientSub);
+
+        final CountDownLatch receiveLatch = new CountDownLatch(10);
+        final CountDownLatch sendLatch = new CountDownLatch(10);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
+        final String data = "data";
+
+        jetStreamSub.subscribe(SUBJECT_NAME, event -> {
+
+            if (event.hasHeaders()) {
+                assertEquals("bar", event.getHeaders().get("foo").get(0));
+                queue.add(event.message());
+                receiveLatch.countDown();
+            }
+
+        }, true, PushSubscribeOptions.builder().build());
+
+        for (int i = 0; i < 10; i++) {
+
+            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
+                    .data(data + i, StandardCharsets.UTF_8)
+                    .build();
+            jetStreamPub.publish(message.getSubject(), headers, message.getData()).onSuccess(event -> sendLatch.countDown());
+        }
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
+
+        assertEquals(10, queue.size());
+
+        final CountDownLatch endLatch = new CountDownLatch(2);
+        clientPub.end().onSuccess(event -> endLatch.countDown());
+        clientSub.end().onSuccess(event -> endLatch.countDown());
+        endLatch.await(3, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testPubMessageOptionsSubWithHeadersAndPubOptions() throws InterruptedException {
+
+        final NatsClient clientPub = getNatsClient();
+        final NatsClient clientSub = getNatsClient();
+        final Headers headers = new Headers().put("foo", "bar");
+
+        final NatsStream jetStreamPub = getJetStream(clientPub);
+        final NatsStream jetStreamSub = getJetStream(clientSub);
+
+        final CountDownLatch receiveLatch = new CountDownLatch(10);
+        final CountDownLatch sendLatch = new CountDownLatch(10);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
+        final String data = "data";
+
+        jetStreamSub.subscribe(SUBJECT_NAME, event -> {
+
+            if (event.hasHeaders()) {
+                assertEquals("bar", event.getHeaders().get("foo").get(0));
+                queue.add(event.message());
+                receiveLatch.countDown();
+            }
+
+        }, true, PushSubscribeOptions.builder().build());
+
+        for (int i = 0; i < 10; i++) {
+
+            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
+                    .data(data + i, StandardCharsets.UTF_8)
+                    .build();
+            jetStreamPub.publish(message.getSubject(), headers, message.getData(),
+                    PublishOptions.builder().build()).onSuccess(event -> sendLatch.countDown());
         }
         sendLatch.await(1, TimeUnit.SECONDS);
         receiveLatch.await(1, TimeUnit.SECONDS);

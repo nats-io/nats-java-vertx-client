@@ -2,6 +2,7 @@ package io.nats.vertx.impl;
 
 import io.nats.client.*;
 import io.nats.client.api.PublishAck;
+import io.nats.client.impl.Headers;
 import io.nats.vertx.NatsStream;
 import io.nats.vertx.NatsVertxMessage;
 import io.vertx.core.*;
@@ -164,6 +165,34 @@ public class NatsStreamImpl implements NatsStream {
         context().executeBlocking(event -> {
             try {
                 final PublishAck ack = jetStream.publish(data, options);
+                promise.complete(ack);
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
+
+    @Override
+    public Future<PublishAck> publish(String subject, Headers headers, byte[] body) {
+        final Promise<PublishAck> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                final PublishAck ack = jetStream.publish(subject, headers, body);
+                promise.complete(ack);
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
+
+    @Override
+    public Future<PublishAck> publish(String subject, Headers headers, byte[] body, PublishOptions options) {
+        final Promise<PublishAck> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                final PublishAck ack = jetStream.publish(subject, headers, body, options);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);

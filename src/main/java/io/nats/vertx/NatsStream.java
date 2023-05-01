@@ -3,6 +3,7 @@ package io.nats.vertx;
 
 import io.nats.client.*;
 import io.nats.client.api.PublishAck;
+import io.nats.client.impl.Headers;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -165,4 +166,58 @@ public interface NatsStream extends WriteStream<Message> {
      * @return  future returning the results of the publish operation.
      */
     Future<PublishAck> publish(Message data, PublishOptions options);
+
+
+    /**
+     * Send a message to the specified subject and waits for a response from
+     * Jetstream. The default publish options will be used.
+     * The message body <strong>will not</strong> be copied. The expected
+     * usage with string content is something like:
+     *
+     * <pre>
+     * nc = Nats.connect()
+     * JetStream js = nc.JetStream()
+     * Headers h = new Headers().put("foo", "bar");
+     * js.publish("destination", h, "message".getBytes("UTF-8"))
+     * </pre>
+     *
+     * where the sender creates a byte array immediately before calling publish.
+     *
+     * See {@link #publish(String, byte[]) publish()} for more details on
+     * publish during reconnect.
+     *
+     * @param subject the subject to send the message to
+     * @param headers Optional headers to publish with the message.
+     * @param body the message body
+     * @return The ack.
+     */
+    Future<PublishAck> publish(String subject, Headers headers, byte[] body);
+
+
+    /**
+     * Send a message to the specified subject and waits for a response from
+     * Jetstream. The message body <strong>will not</strong> be copied. The expected
+     * usage with string content is something like:
+     *
+     * <pre>
+     * nc = Nats.connect()
+     * JetStream js = nc.JetStream()
+     * Headers h = new Headers().put("foo", "bar");
+     * js.publish("destination", h, "message".getBytes("UTF-8"), publishOptions)
+     * </pre>
+     *
+     * where the sender creates a byte array immediately before calling publish.
+     *
+     * See {@link #publish(String, byte[]) publish()} for more details on
+     * publish during reconnect.
+     *
+     * @param subject the subject to send the message to
+     * @param headers Optional headers to publish with the message.
+     * @param body the message body
+     * @param options publisher options
+     * @return The ack.
+     */
+    Future<PublishAck> publish(String subject, Headers headers, byte[] body, PublishOptions options);
+
+
 }

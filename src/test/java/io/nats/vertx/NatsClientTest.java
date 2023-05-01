@@ -4,6 +4,7 @@ import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
+import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -296,6 +297,87 @@ public class NatsClientTest {
         endLatch.await(3, TimeUnit.SECONDS);
     }
 
+    @Test
+    public void testPubMessageSubWithHeaderAndReplyTo() throws InterruptedException {
+
+
+        final NatsClient natsClientPub = getNatsClient();
+        final NatsClient natsClientSub = getNatsClient();
+
+
+        final CountDownLatch receiveLatch = new CountDownLatch(10);
+        final CountDownLatch sendLatch = new CountDownLatch(10);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
+        final String data = "data";
+
+        final Headers headers = new Headers();
+        headers.add("header1", "value1");
+
+        natsClientSub.subscribe(SUBJECT_NAME, event -> {
+            if (event.hasHeaders() && event.getReplyTo().equals("reply-to")) {
+                queue.add(event);
+                receiveLatch.countDown();
+            }
+        });
+
+        for (int i = 0; i < 10; i++) {
+
+            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
+                    .data(data + i, StandardCharsets.UTF_8)
+                    .build();
+            natsClientPub.publish(SUBJECT_NAME, "reply-to", headers,
+                    data.getBytes(StandardCharsets.UTF_8)).onSuccess(event -> sendLatch.countDown());
+        }
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
+
+        assertEquals(10, queue.size());
+
+        closeClient(natsClientPub);
+        closeClient(natsClientSub);
+    }
+
+
+    @Test
+    public void testPubMessageSubWithHeader() throws InterruptedException {
+
+
+        final NatsClient natsClientPub = getNatsClient();
+        final NatsClient natsClientSub = getNatsClient();
+
+
+        final CountDownLatch receiveLatch = new CountDownLatch(10);
+        final CountDownLatch sendLatch = new CountDownLatch(10);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
+        final String data = "data";
+
+        final Headers headers = new Headers();
+        headers.add("header1", "value1");
+
+        natsClientSub.subscribe(SUBJECT_NAME, event -> {
+            if (event.hasHeaders()) {
+                queue.add(event);
+                receiveLatch.countDown();
+            }
+        });
+
+        for (int i = 0; i < 10; i++) {
+
+            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
+                    .data(data + i, StandardCharsets.UTF_8)
+                    .build();
+            natsClientPub.publish(SUBJECT_NAME,  headers,
+                    data.getBytes(StandardCharsets.UTF_8)).onSuccess(event -> sendLatch.countDown());
+        }
+        sendLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(1, TimeUnit.SECONDS);
+
+        assertEquals(10, queue.size());
+
+        closeClient(natsClientPub);
+        closeClient(natsClientSub);
+    }
+
 
     @Test
     public void testPubSubReplyTo() throws InterruptedException {
@@ -409,6 +491,115 @@ public class NatsClientTest {
         final Message reply = message.get();
         assertNotNull(reply);
         assertEquals("HELLO_MOM", new String(reply.getData(), StandardCharsets.UTF_8));
+
+        closeClient(natsRequester);
+        closeClient(natsReply);
+    }
+
+
+    @Test
+    public void testRequestMessageReplyWithHeaders() throws InterruptedException {
+
+        final NatsClient natsRequester = getNatsClient();
+        final NatsClient natsReply = getNatsClient();
+        final Headers headers = new Headers().put("key", "value");
+
+
+        natsReply.subscribe("REQUEST_SUBJECT", event -> {
+            if (event.hasHeaders()) {
+                if (event.getHeaders().containsKey("key")) {
+                    natsReply.publish(event.getReplyTo(), event.getData());
+                }
+            }
+        });
+
+
+        final Message requestMessage = NatsMessage.builder()
+                .subject("REQUEST_SUBJECT")
+                .data("HELLO_MOM", StandardCharsets.UTF_8)
+                .build();
+        final Future<Message> request = natsRequester
+                .request(requestMessage.getSubject(), headers, requestMessage.getData());
+
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Message> message = new AtomicReference<>();
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+        request.onSuccess(event -> {
+            message.set(event);
+            latch.countDown();
+
+        }).onFailure(event -> {
+            error.set(event);
+            latch.countDown();
+        });
+
+        latch.await(3, TimeUnit.SECONDS);
+
+        if (error.get() != null) {
+            fail();
+        }
+
+        final Message reply = message.get();
+        assertNotNull(reply);
+        assertEquals("HELLO_MOM", new String(reply.getData(), StandardCharsets.UTF_8));
+
+
+
+        closeClient(natsRequester);
+        closeClient(natsReply);
+    }
+
+
+    @Test
+    public void testRequestMessageReplyWithHeadersAndDuration() throws InterruptedException {
+
+        final NatsClient natsRequester = getNatsClient();
+        final NatsClient natsReply = getNatsClient();
+        final Headers headers = new Headers().put("key", "value");
+        final Duration duration = Duration.ofSeconds(5);
+
+
+        natsReply.subscribe("REQUEST_SUBJECT", event -> {
+            if (event.hasHeaders()) {
+                if (event.getHeaders().containsKey("key")) {
+                    natsReply.publish(event.getReplyTo(), event.getData());
+                }
+            }
+        });
+
+
+        final Message requestMessage = NatsMessage.builder()
+                .subject("REQUEST_SUBJECT")
+                .data("HELLO_MOM", StandardCharsets.UTF_8)
+                .build();
+        final Future<Message> request = natsRequester
+                .requestWithTimeout(requestMessage.getSubject(), headers, requestMessage.getData(), duration);
+
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Message> message = new AtomicReference<>();
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+        request.onSuccess(event -> {
+            message.set(event);
+            latch.countDown();
+
+        }).onFailure(event -> {
+            error.set(event);
+            latch.countDown();
+        });
+
+        latch.await(3, TimeUnit.SECONDS);
+
+        if (error.get() != null) {
+            fail();
+        }
+
+        final Message reply = message.get();
+        assertNotNull(reply);
+        assertEquals("HELLO_MOM", new String(reply.getData(), StandardCharsets.UTF_8));
+
+
 
         closeClient(natsRequester);
         closeClient(natsReply);
