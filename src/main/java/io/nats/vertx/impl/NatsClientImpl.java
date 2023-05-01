@@ -1,6 +1,7 @@
 package io.nats.vertx.impl;
 
 import io.nats.client.*;
+import io.nats.client.impl.Headers;
 import io.nats.vertx.NatsClient;
 import io.nats.vertx.NatsOptions;
 import io.nats.vertx.NatsStream;
@@ -359,6 +360,32 @@ public class NatsClientImpl implements NatsClient {
     }
 
     @Override
+    public Future<Message> request(final String subject, final Headers headers, final byte[] body) {
+        return context().executeBlocking(event -> {
+            try {
+                final CompletableFuture<Message> request = connection.get().request(subject, headers, body);
+                final Message result = request.get();
+                event.complete(result);
+            } catch (Exception e) {
+                handleException(event, e);
+            }
+        }, false);
+    }
+
+    @Override
+    public Future<Message> requestWithTimeout(String subject, Headers headers, byte[] body, Duration timeout) {
+        return context().executeBlocking(event -> {
+            try {
+                final CompletableFuture<Message> request = connection.get().requestWithTimeout(subject, headers, body, timeout);
+                final Message result = request.get();
+                event.complete(result);
+            } catch (Exception e) {
+                handleException(event, e);
+            }
+        }, false);
+    }
+
+    @Override
     public void request(final Message data, final Handler<AsyncResult<Message>> handler, final Duration timeout) {
         final Promise<Message> promise = context().promise();
         context().executeBlocking((Handler<Promise<Void>>) event -> {
@@ -407,6 +434,35 @@ public class NatsClientImpl implements NatsClient {
     }
 
     @Override
+    public Future<Void> publish(String subject, Headers headers, byte[] body) {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                connection.get().publish(subject, headers, body);
+                promise.complete();
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
+
+    @Override
+    public Future<Void> publish(final String subject, final String replyTo, final Headers headers, final byte[] body) {
+
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                connection.get().publish(subject, replyTo, headers, body);
+                promise.complete();
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
+
+    @Override
     public Future<Void> subscribe(String subject, Handler<Message> handler) {
 
         final Promise<Void> promise = context().promise();
@@ -427,9 +483,7 @@ public class NatsClientImpl implements NatsClient {
     private void drainSubscription(Handler<Message> handler, final Subscription subscribe, final String subject) {
         try {
             Message message = subscribe.nextMessage(noWait);
-            int count = 0;
             while (message!=null) {
-                count++;
                 try {
                     handler.handle(message);
                 } catch (Exception e) {
@@ -437,8 +491,9 @@ public class NatsClientImpl implements NatsClient {
                 }
                 message = subscribe.nextMessage(noWait);
             }
-            if (subscriptionMap.containsKey(subject))
-            context().setTimer(100, event -> context().executeBlocking(e -> drainSubscription(handler, subscribe, subject), false));
+            if (subscriptionMap.containsKey(subject)) {
+                context().setTimer(100, event -> context().executeBlocking(e -> drainSubscription(handler, subscribe, subject), false));
+            }
         } catch (Exception e) {
             exceptionHandler.get().handle(e);
         }
@@ -482,5 +537,19 @@ public class NatsClientImpl implements NatsClient {
     @Override
     public Connection getConnection() {
         return this.connection.get();
+    }
+
+    @Override
+    public Future<Void> close() {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+              getConnection().close();
+              promise.complete();
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
     }
 }
