@@ -203,4 +203,13 @@ public interface NatsClient extends WriteStream<Message> {
      * @return Low level NATS connection.
      */
     Connection getConnection();
+
+    Future<Void> close();
+
+    @Override
+    default Future<Void> end() {
+        return close();
+    }
+
+
 }

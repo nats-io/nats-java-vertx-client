@@ -483,4 +483,18 @@ public class NatsClientImpl implements NatsClient {
     public Connection getConnection() {
         return this.connection.get();
     }
+
+    @Override
+    public Future<Void> close() {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+              getConnection().close();
+              promise.complete();
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
 }

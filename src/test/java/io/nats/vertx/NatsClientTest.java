@@ -102,13 +102,14 @@ public class NatsClientTest {
 
         assertTrue(queue.size() > 8);
 
-        final CountDownLatch endLatch = new CountDownLatch(2);
-        natsClientPub.end().onSuccess(event -> endLatch.countDown());
-        natsClientSub.end().onSuccess(event -> endLatch.countDown());
-        endLatch.await(3, TimeUnit.SECONDS);
         natsClientSub.unsubscribe(SUBJECT_NAME)
                 .onFailure(Throwable::printStackTrace)
                 .onSuccess(event -> System.out.println("Success"));
+
+
+        closeClient(natsClientPub);
+        closeClient(natsClientSub);
+
 
     }
 
@@ -136,11 +137,10 @@ public class NatsClientTest {
         latch.await(10, TimeUnit.SECONDS);
 
         assertTrue(queue.size() > 98);
+        closeClient(natsClientPub);
+        closeClient(natsClientSub);
 
-        final CountDownLatch endLatch = new CountDownLatch(2);
-        natsClientPub.end().onSuccess(event -> endLatch.countDown());
-        natsClientSub.end().onSuccess(event -> endLatch.countDown());
-        endLatch.await(3, TimeUnit.SECONDS);
+
     }
 
     @Test
@@ -565,8 +565,13 @@ public class NatsClientTest {
 
     private void closeClient(NatsClient natsClient) throws InterruptedException {
         final CountDownLatch endLatch = new CountDownLatch(1);
-        natsClient.end().onSuccess(event -> endLatch.countDown());
-        endLatch.await(3, TimeUnit.SECONDS);
+        natsClient.end().onSuccess(event -> endLatch.countDown()).onFailure(error -> error.printStackTrace());
+        endLatch.await(10, TimeUnit.SECONDS);
+        if ( endLatch.getCount() > 0 ) {
+            fail();
+        }
+
+
     }
 
     private NatsClient getNatsClient() throws InterruptedException {
