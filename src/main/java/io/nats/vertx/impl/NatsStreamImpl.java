@@ -216,7 +216,6 @@ public class NatsStreamImpl implements NatsStream {
         });
         context().executeBlocking(event -> {
             try {
-
                 final Dispatcher dispatcher = connection.createDispatcher();
                 final Subscription subscribe = jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
@@ -293,6 +292,26 @@ public class NatsStreamImpl implements NatsStream {
                 } else {
                     throw new IllegalStateException("No message on stream " + subject);
                 }
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
+
+    @Override
+    public Future<Void> pull(String subject, int batchSize) {
+        final Promise<Void> promise = context().promise();
+        context().executeBlocking(evt -> {
+            try {
+                final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
+                if (jetStreamSubscription == null) {
+                    throw new IllegalStateException("Subscription not found " + subject);
+                }
+
+                jetStreamSubscription.pull(batchSize);
+                promise.complete();
+
             } catch (Exception e) {
                 handleException(promise, e);
             }

@@ -183,4 +183,13 @@ public interface NatsStream extends WriteStream<Message> {
         return nextMessage(subject, 0);
     }
 
+
+    /**
+     * Request to pull a batch of message from the subscription.
+     * You need to call nextMessage after this to get the messages.
+     * @param subject subject The subject for the subscription.
+     * @return future message.
+     */
+    Future<Void> pull(final String subject, final int batchSize);
+
 }

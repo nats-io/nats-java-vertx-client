@@ -260,6 +260,101 @@ public class NatsStreamTest {
 
 
 
+    @Test
+    public void testSubJetStreamWithPullOptionsWithBatch() throws Exception {
+        final AtomicInteger errorsFromHandler = new AtomicInteger();
+        final NatsClient natsClient = getNatsClient(event -> {
+            errorsFromHandler.incrementAndGet();
+        } );
+        final NatsStream natsStream = getJetStream(natsClient);
+        final CountDownLatch latch = new CountDownLatch(100);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(200);
+        final String data = "data";
+        final PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
+                .durable("durable-name-is-required")
+                .build();
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final Future<Void> subscribe = natsStream.subscribe(SUBJECT_NAME, pullOptions);
+        subscribe.onSuccess(event -> startLatch.countDown()).onFailure(event -> event.printStackTrace());
+        startLatch.await(10, TimeUnit.SECONDS);
+        System.out.println("Started subscription");
+        for (int i = 0; i < 100; i++) {
+            nc.publish(SUBJECT_NAME, (data + i).getBytes());
+        }
+        Thread.sleep(100);
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> {
+            for (int i = 0; i < 100; i++) {
+
+                int batchSize = 1;
+                if (i % 10 == 0) {
+                    batchSize = 10;
+                }
+                final Future<Message> messageFuture = natsStream.nextMessage(SUBJECT_NAME,  batchSize);
+
+                messageFuture.onSuccess(event -> {
+                    latch.countDown();
+                    queue.add(event);
+                }).onFailure(event -> event.printStackTrace());
+            }
+        });
+        latch.await(20, TimeUnit.SECONDS);
+        natsStream.unsubscribe(SUBJECT_NAME);
+        Thread.sleep(100);
+        assertEquals(100, queue.size());
+        closeClient(natsClient);
+    }
+
+
+    @Test
+    public void testSubJetStreamWithPullOptionsWithPullBatch() throws Exception {
+        final AtomicInteger errorsFromHandler = new AtomicInteger();
+        final NatsClient natsClient = getNatsClient(event -> {
+            errorsFromHandler.incrementAndGet();
+        } );
+        final NatsStream natsStream = getJetStream(natsClient);
+        final CountDownLatch latch = new CountDownLatch(100);
+        final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(200);
+        final String data = "data";
+        final PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
+                .durable("durable-name-is-required")
+                .build();
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final Future<Void> subscribe = natsStream.subscribe(SUBJECT_NAME, pullOptions);
+        subscribe.onSuccess(event -> startLatch.countDown()).onFailure(event -> event.printStackTrace());
+        startLatch.await(10, TimeUnit.SECONDS);
+        System.out.println("Started subscription");
+        for (int i = 0; i < 100; i++) {
+            nc.publish(SUBJECT_NAME, (data + i).getBytes());
+        }
+        Thread.sleep(100);
+
+        final CountDownLatch pullLatch = new CountDownLatch(1);
+
+        Future<Void> pull = natsStream.pull(SUBJECT_NAME, 100);
+        pull.onSuccess(event -> pullLatch.countDown());
+
+        pullLatch.await(10, TimeUnit.SECONDS);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> {
+            for (int i = 0; i < 100; i++) {
+                final Future<Message> messageFuture = natsStream.nextMessage(SUBJECT_NAME);
+                messageFuture.onSuccess(event -> {
+                    latch.countDown();
+                    queue.add(event);
+                }).onFailure(event -> event.printStackTrace());
+            }
+        });
+        latch.await(20, TimeUnit.SECONDS);
+        natsStream.unsubscribe(SUBJECT_NAME);
+        Thread.sleep(100);
+        assertEquals(100, queue.size());
+        closeClient(natsClient);
+    }
+
+
+
 
     private NatsStream getJetStream(NatsClient natsClient) throws InterruptedException {
         final Future<NatsStream> connect = natsClient.jetStream();
