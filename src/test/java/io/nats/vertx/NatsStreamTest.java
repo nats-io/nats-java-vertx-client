@@ -964,16 +964,15 @@ public class NatsStreamTest {
             }
         }
 
-        Thread.sleep(100);
+        Thread.sleep(1000);
         receiveLatch.await(10, TimeUnit.SECONDS);
         errorsLatch.await(10, TimeUnit.SECONDS);
 
         assertEquals(5, queue.size());
 
         assertTrue(errorsFromHandler.get() >= 5);
-        assertEquals(5, sends.get());
         assertEquals(5, errors.get());
-
+        assertEquals(5, sends.get());
 
         final CountDownLatch endLatch = new CountDownLatch(2);
         clientPub.end().onSuccess(event -> endLatch.countDown());
