@@ -12,10 +12,8 @@ import io.vertx.core.streams.WriteStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 /**
  * NATS stream implementation.
@@ -259,97 +257,12 @@ public class NatsStreamImpl implements NatsStream {
 
 
     @Override
-    public Future<Void> subscribe(final String subject, final Handler<NatsVertxMessage> handler, final PullSubscribeOptions so,
-                                  final int batchSize) {
+    public Future<Void> subscribe(final String subject,  final PullSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
-
         context().executeBlocking(evt -> {
             try {
-
                 final JetStreamSubscription subscription = so != null ? jetStream.subscribe(subject, so) : jetStream.subscribe(subject);
                 subscriptionMap.put(subject, subscription);
-                context().executeBlocking(event -> {
-                    try {
-                        int messageCount = 0;
-                        while (true) {
-
-                            if (messageCount % batchSize == 0) {
-                                subscription.pull(batchSize);
-                            }
-                            messageCount++;
-
-                            final Message message = subscription.nextMessage(Duration.ofMillis(10));
-
-
-                            if (message != null) {
-                                final NatsVertxMessage nvMessage = new NatsVertxMessage() {
-                                    @Override
-                                    public Message message() {
-                                        return message;
-                                    }
-
-                                    @Override
-                                    public Vertx vertx() {
-                                        return vertx;
-                                    }
-                                };
-
-                                handler.handle(nvMessage);
-                            } else {
-                                if (!subscriptionMap.containsKey(subject)) {
-                                    break;
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        promise.fail(e);
-                        exceptionHandler.get().handle(e);
-                    }
-                }, false);
-                promise.complete();
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
-    }
-
-
-    @Override
-    public Future<Void> subscribe(final String subject, final Handler<NatsVertxMessage> handler) {
-        final Promise<Void> promise = context().promise();
-        context().executeBlocking(evt -> {
-            try {
-                final JetStreamSubscription subscription = jetStream.subscribe(subject);
-                subscriptionMap.put(subject, subscription);
-                context().executeBlocking(event -> {
-                    try {
-                        while (true) {
-                            final Message message = subscription.nextMessage(Duration.ofMillis(10));
-                            if (message != null) {
-                                final NatsVertxMessage nvMessage = new NatsVertxMessage() {
-                                    @Override
-                                    public Message message() {
-                                        return message;
-                                    }
-
-                                    @Override
-                                    public Vertx vertx() {
-                                        return vertx;
-                                    }
-                                };
-                                handler.handle(nvMessage);
-                            } else {
-                                if (!subscriptionMap.containsKey(subject)) {
-                                    break;
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        promise.fail(e);
-                        exceptionHandler.get().handle(e);
-                    }
-                }, false);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -359,61 +272,34 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> subscribeBatch(final String subject, final Handler<List<NatsVertxMessage>> handler,
-                                       final int batchSize, final Duration batchDuration,
-                                       final PullSubscribeOptions so) {
-        final Promise<Void> promise = context().promise();
+    public Future<Void> subscribe(String subject) {
+       return subscribe(subject, null);
+    }
 
+    public Future<Message> nextMessage(final String subject, final int batchSize) {
+        final Promise<Message> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
-
-                final JetStreamSubscription subscription = jetStream.subscribe(subject, so);
-                subscriptionMap.put(subject, subscription);
-
-
-                context().executeBlocking(event -> {
-                    try {
-                        while (true) {
-
-
-                            List<Message> messages = subscription.fetch(batchSize, batchDuration);
-
-
-                            if (messages != null && !messages.isEmpty()) {
-                                final List<NatsVertxMessage> natsVertxMessages = messages.stream().map(m -> new NatsVertxMessage() {
-
-                                            @Override
-                                            public Message message() {
-                                                return m;
-                                            }
-
-                                            @Override
-                                            public Vertx vertx() {
-                                                return vertx;
-                                            }
-                                        }
-                                ).collect(Collectors.toList());
-
-
-                                handler.handle(natsVertxMessages);
-                            } else {
-                                if (!subscriptionMap.containsKey(subject)) {
-                                    break;
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        promise.fail(e);
-                        exceptionHandler.get().handle(e);
-                    }
-                }, false);
-                promise.complete();
+                final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
+                if (jetStreamSubscription == null) {
+                    throw new IllegalStateException("Subscription not found " + subject);
+                }
+                if (batchSize > 0) {
+                    jetStreamSubscription.pull(batchSize);
+                }
+                final Message message = jetStreamSubscription.nextMessage(Duration.ofMillis(1000));
+                if (message != null) {
+                    promise.complete(message);
+                } else {
+                    throw new IllegalStateException("No message on stream " + subject);
+                }
             } catch (Exception e) {
                 handleException(promise, e);
             }
         }, false);
         return promise.future();
     }
+
 
     @Override
     public Future<Void> unsubscribe(final String subject) {

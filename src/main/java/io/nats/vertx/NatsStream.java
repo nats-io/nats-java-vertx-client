@@ -1,6 +1,5 @@
 package io.nats.vertx;
 
-
 import io.nats.client.*;
 import io.nats.client.api.PublishAck;
 import io.nats.client.impl.Headers;
@@ -8,9 +7,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.streams.WriteStream;
-
-import java.time.Duration;
-import java.util.List;
 
 /**
  * Provides a Vert.x WriteStream interface with Futures and Promises.
@@ -86,70 +82,20 @@ public interface NatsStream extends WriteStream<Message> {
     /**
      * Subscribe to JetStream stream
      * @param subject The subject of the stream.
-     * @param handler The message handler to listen to messages from the stream.
      * @param so The PullSubscribeOptions
-     * @return future that returns status of subscription.
-     */
-    default Future<Void> subscribe(
-            String subject, Handler<NatsVertxMessage> handler, PullSubscribeOptions so) {
-        return this.subscribe(subject, handler, so, 10);
-    }
-
-
-    /**
-     * Subscribe to JetStream stream
-     * @param subject The subject of the stream.
-     * @param handler The message handler to listen to messages from the stream.
-     * @param so The PullSubscribeOptions
-     * @param so The PullSubscribeOptions
-     *
      * @return future that returns status of subscription.
      */
     Future<Void> subscribe(
-            String subject, Handler<NatsVertxMessage> handler, PullSubscribeOptions so, int batchSize);
+            String subject, PullSubscribeOptions so) ;
 
 
     /**
      * Subscribe to JetStream stream
      * @param subject The subject of the stream.
-     * @param handler The message handler to listen to messages from the stream.
      * @return future that returns status of subscription.
      */
     Future<Void> subscribe(
-            String subject, Handler<NatsVertxMessage> handler);
-
-
-    /**
-     * Subscribe to JetStream stream
-     * @param subject The subject of the stream.
-     * @param handler The message handler to listen to messages from the stream.
-     * @param  batchSize Batch Size
-     * @param batchDuration Wait this long before returning what is in the batch.
-     * @param so The PullSubscribeOptions
-     *
-     * @return future that returns status of subscription.
-     */
-    Future<Void> subscribeBatch(
-            String subject, Handler<List<NatsVertxMessage>> handler, int batchSize, Duration batchDuration,
-            final PullSubscribeOptions so);
-
-
-    /**
-     * Subscribe to JetStream stream
-     * @param subject The subject of the stream.
-     * @param handler The message handler to listen to messages from the stream.
-     * @param  batchSize Batch Size
-     * @param batchDuration Wait this long before returning what is in the batch.
-     * @param so The PullSubscribeOptions
-     *
-     * @return future that returns status of subscription.
-     */
-    default Future<Void> subscribeWithBatch(
-            String subject, Handler<NatsVertxMessage> handler, int batchSize, Duration batchDuration,
-            final PullSubscribeOptions so) {
-        return subscribeBatch(subject, event -> event.forEach(handler::handle), batchSize, batchDuration, so);
-    }
-
+            String subject) ;
 
 
     /**
@@ -219,5 +165,22 @@ public interface NatsStream extends WriteStream<Message> {
      */
     Future<PublishAck> publish(String subject, Headers headers, byte[] body, PublishOptions options);
 
+
+    /**
+     * Retrieve a message from the subscription.
+     * @param subject subject The subject for the subscription.
+     * @param batchSize batchSize The batch size, only use if you passed the right publish options.
+     * @return future message.
+     */
+    Future<Message> nextMessage(final String subject, final int batchSize);
+
+    /**
+     * Retrieve a message from the subscription.
+     * @param subject subject The subject for the subscription.
+     * @return future message.
+     */
+    default  Future<Message> nextMessage(final String subject) {
+        return nextMessage(subject, 0);
+    }
 
 }
