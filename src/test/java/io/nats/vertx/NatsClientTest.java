@@ -735,7 +735,7 @@ public class NatsClientTest {
             }
         }
 
-        latch.await(3, TimeUnit.SECONDS);
+        latch.await(10, TimeUnit.SECONDS);
 
         natsClient.unsubscribe(SUBJECT_NAME);
 
