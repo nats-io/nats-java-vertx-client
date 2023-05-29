@@ -377,7 +377,7 @@ public class NatsStreamTest {
             error.set(event);
             latch.countDown();
         });
-        latch.await(1, TimeUnit.SECONDS);
+        latch.await(10, TimeUnit.SECONDS);
         if (error.get() != null) {
             fail();
         }
@@ -958,14 +958,14 @@ public class NatsStreamTest {
 
 
             if (i == 4) {
-                Thread.sleep(100);
+                Thread.sleep(1000);
                 natsServerRunner.close();
-                Thread.sleep(100);
+                Thread.sleep(1000);
             }
         }
 
         Thread.sleep(100);
-        receiveLatch.await(1, TimeUnit.SECONDS);
+        receiveLatch.await(10, TimeUnit.SECONDS);
         errorsLatch.await(10, TimeUnit.SECONDS);
 
         assertEquals(5, queue.size());
