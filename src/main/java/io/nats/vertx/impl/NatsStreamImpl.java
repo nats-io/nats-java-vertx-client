@@ -12,6 +12,8 @@ import io.vertx.core.streams.WriteStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -275,23 +277,16 @@ public class NatsStreamImpl implements NatsStream {
        return subscribe(subject, null);
     }
 
-    public Future<Message> nextMessage(final String subject, final int batchSize) {
-        final Promise<Message> promise = context().promise();
+    public Future<List<Message>> fetch(final String subject, final int batchSize, final long maxWaitMillis) {
+        final Promise<List<Message>> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
                 if (jetStreamSubscription == null) {
                     throw new IllegalStateException("Subscription not found " + subject);
                 }
-                if (batchSize > 0) {
-                    jetStreamSubscription.pull(batchSize);
-                }
-                final Message message = jetStreamSubscription.nextMessage(Duration.ofMillis(1000));
-                if (message != null) {
-                    promise.complete(message);
-                } else {
-                    throw new IllegalStateException("No message on stream " + subject);
-                }
+                final List<Message> messages = jetStreamSubscription.fetch(batchSize, maxWaitMillis);
+                promise.complete(messages);
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -300,18 +295,16 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> pull(String subject, int batchSize) {
-        final Promise<Void> promise = context().promise();
+    public Future<Iterator<Message>> iterate(String subject, int batchSize, long maxWaitMillis) {
+        final Promise<Iterator<Message>> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
                 if (jetStreamSubscription == null) {
                     throw new IllegalStateException("Subscription not found " + subject);
                 }
-
-                jetStreamSubscription.pull(batchSize);
-                promise.complete();
-
+                final Iterator<Message> messages = jetStreamSubscription.iterate(batchSize, maxWaitMillis);
+                promise.complete(messages);
             } catch (Exception e) {
                 handleException(promise, e);
             }

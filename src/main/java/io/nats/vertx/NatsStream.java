@@ -8,6 +8,10 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.streams.WriteStream;
 
+import java.time.Duration;
+import java.util.Iterator;
+import java.util.List;
+
 /**
  * Provides a Vert.x WriteStream interface with Futures and Promises.
  */
@@ -170,26 +174,51 @@ public interface NatsStream extends WriteStream<Message> {
      * Retrieve a message from the subscription.
      * @param subject subject The subject for the subscription.
      * @param batchSize batchSize The batch size, only use if you passed the right publish options.
+     * @param maxWaitMillis the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    Future<Message> nextMessage(final String subject, final int batchSize);
+    Future<List<Message>> fetch(final String subject, final int batchSize, final long maxWaitMillis);
 
     /**
-     * Retrieve a message from the subscription.
+     * Fetch a list of messages up to the batch size, waiting no longer than maxWait.
+     * This uses pullExpiresIn under the covers, and manages all responses from sub.nextMessage(...)
+     * to only return regular JetStream messages. This can only be used when the subscription
+     * is pull based. ! Pull subscriptions only. Push subscription will throw IllegalStateException
      * @param subject subject The subject for the subscription.
+     * @param batchSize batchSize The batch size, only use if you passed the right publish options.
+     * @param maxWait the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    default  Future<Message> nextMessage(final String subject) {
-        return nextMessage(subject, 0);
+    default Future<List<Message>> fetch(final String subject, final int batchSize, final Duration maxWait) {
+        return fetch(subject, batchSize, maxWait.toMillis());
     }
 
-
     /**
-     * Request to pull a batch of message from the subscription.
-     * You need to call nextMessage after this to get the messages.
+     * Prepares an iterator. This uses pullExpiresIn under the covers, and manages all responses.
+     * The iterator will have no messages if it does not receive the first message within
+     * the max wait period. It will stop if the batch is fulfilled or if there are fewer
+     * than batch size messages. 408 Status messages are ignored and will not count toward the
+     * fulfilled batch size. ! Pull subscriptions only. Push subscription will throw IllegalStateException
      * @param subject subject The subject for the subscription.
+     * @param batchSize batchSize The batch size, only use if you passed the right publish options.
+     * @param maxWaitMillis the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    Future<Void> pull(final String subject, final int batchSize);
+    Future<Iterator<Message>> iterate(final String subject, final int batchSize, final long maxWaitMillis);
+
+    /**
+     * Prepares an iterator. This uses pullExpiresIn under the covers, and manages all responses.
+     * The iterator will have no messages if it does not receive the first message within
+     * the max wait period. It will stop if the batch is fulfilled or if there are fewer
+     * than batch size messages. 408 Status messages are ignored and will not count toward the
+     * fulfilled batch size. ! Pull subscriptions only. Push subscription will throw IllegalStateException
+     * @param subject subject The subject for the subscription.
+     * @param batchSize batchSize The batch size, only use if you passed the right publish options.
+     * @param maxWait the maximum time to wait for the first message, in milliseconds
+     * @return future message.
+     */
+    default Future<Iterator<Message>> iterate(final String subject, final int batchSize, final Duration maxWait) {
+        return iterate(subject, batchSize, maxWait.toMillis());
+    }
 
 }
