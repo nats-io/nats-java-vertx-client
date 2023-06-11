@@ -195,7 +195,7 @@ public class NatsStreamTest {
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
         final String data = "data";
         final CountDownLatch startLatch = new CountDownLatch(1);
-        final Future<Void> subscribe = natsStream.subscribe(SUBJECT_NAME, PullSubscribeOptions.builder().build());
+        final Future<SubscriptionReadStream> subscribe = natsStream.subscribe(SUBJECT_NAME, PullSubscribeOptions.builder().build());
         subscribe.onSuccess(event -> startLatch.countDown()).onFailure(event -> event.printStackTrace());
         startLatch.await(10, TimeUnit.SECONDS);
         System.out.println("Started subscription");
@@ -234,7 +234,7 @@ public class NatsStreamTest {
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
         final String data = "data";
         final CountDownLatch startLatch = new CountDownLatch(1);
-        final Future<Void> subscribe = natsStream.subscribe(SUBJECT_NAME, PullSubscribeOptions.builder().build());
+        final Future<SubscriptionReadStream> subscribe = natsStream.subscribe(SUBJECT_NAME, PullSubscribeOptions.builder().build());
         subscribe.onSuccess(event -> startLatch.countDown()).onFailure(event -> event.printStackTrace());
         startLatch.await(10, TimeUnit.SECONDS);
         System.out.println("Started subscription");

@@ -5,12 +5,12 @@ import io.nats.client.api.PublishAck;
 import io.nats.client.impl.Headers;
 import io.nats.vertx.NatsStream;
 import io.nats.vertx.NatsVertxMessage;
+import io.nats.vertx.SubscriptionReadStream;
 import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 
 import java.util.Iterator;
 import java.util.List;
@@ -202,6 +202,7 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
+    @Deprecated
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
 
@@ -219,7 +220,7 @@ public class NatsStreamImpl implements NatsStream {
         context().executeBlocking(event -> {
             try {
                 final Dispatcher dispatcher = connection.createDispatcher();
-                final Subscription subscribe = jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
+                jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
@@ -230,6 +231,7 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
+    @Deprecated
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
@@ -258,13 +260,15 @@ public class NatsStreamImpl implements NatsStream {
 
 
     @Override
-    public Future<Void> subscribe(final String subject,  final PullSubscribeOptions so) {
-        final Promise<Void> promise = context().promise();
+    public Future<SubscriptionReadStream> subscribe(final String subject, final PullSubscribeOptions so) {
+        final Promise<SubscriptionReadStream> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription subscription = so != null ? jetStream.subscribe(subject, so) : jetStream.subscribe(subject);
+
+                final SubscriptionReadStream subscriptionReadStream = new SubscriptionReadStreamImpl(context(), subscription, exceptionHandler);
                 subscriptionMap.put(subject, subscription);
-                promise.complete();
+                promise.complete(subscriptionReadStream);
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -273,7 +277,8 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> subscribe(String subject) {
+    @Deprecated
+    public Future<SubscriptionReadStream> subscribe(String subject) {
        return subscribe(subject, null);
     }
 

@@ -63,6 +63,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param so The PushSubscribeOptions
      * @return future that returns status of subscription.
      */
+    @Deprecated
     Future<Void> subscribe(
             String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so);
 
@@ -75,6 +76,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param so The PushSubscribeOptions
      * @return future that returns status of subscription.
      */
+    @Deprecated
     Future<Void> subscribe(
             String subject,
             String queue,
@@ -89,7 +91,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param so The PullSubscribeOptions
      * @return future that returns status of subscription.
      */
-    Future<Void> subscribe(
+    Future<SubscriptionReadStream> subscribe(
             String subject, PullSubscribeOptions so) ;
 
 
@@ -98,7 +100,8 @@ public interface NatsStream extends WriteStream<Message> {
      * @param subject The subject of the stream.
      * @return future that returns status of subscription.
      */
-    Future<Void> subscribe(
+    @Deprecated
+    Future<SubscriptionReadStream> subscribe(
             String subject) ;
 
 
