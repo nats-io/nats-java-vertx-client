@@ -2,6 +2,7 @@ package io.nats.vertx.impl;
 
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
+import io.nats.vertx.NatsVertxMessage;
 import io.nats.vertx.SubscriptionReadStream;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -24,12 +25,12 @@ public class SubscriptionReadStreamImpl implements SubscriptionReadStream {
     }
 
     @Override
-    public Future<List<Message>> fetch(int batchSize, long maxWaitMillis) {
-        final Promise<List<Message>> promise = context.promise();
+    public Future<List<NatsVertxMessage>> fetch(int batchSize, long maxWaitMillis) {
+        final Promise<List<NatsVertxMessage>> promise = context.promise();
         context.executeBlocking(evt -> {
             try {
                 final List<Message> messages = subscription.fetch(batchSize, maxWaitMillis);
-                promise.complete(messages);
+                promise.complete(NatsVertxMessageImpl.listOf(messages, context));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -38,12 +39,22 @@ public class SubscriptionReadStreamImpl implements SubscriptionReadStream {
     }
 
     @Override
-    public Future<Iterator<Message>> iterate(String subject, int batchSize, long maxWaitMillis) {
-        final Promise<Iterator<Message>> promise = context.promise();
+    public Future<Iterator<NatsVertxMessage>> iterate(int batchSize, long maxWaitMillis) {
+        final Promise<Iterator<NatsVertxMessage>> promise = context.promise();
         context.executeBlocking(evt -> {
             try {
                 final Iterator<Message> messages = subscription.iterate(batchSize, maxWaitMillis);
-                promise.complete(messages);
+                promise.complete(new Iterator<NatsVertxMessage>() {
+                    @Override
+                    public boolean hasNext() {
+                        return messages.hasNext();
+                    }
+
+                    @Override
+                    public NatsVertxMessage next() {
+                        return new NatsVertxMessageImpl(messages.next(), context);
+                    }
+                });
             } catch (Exception e) {
                 handleException(promise, e);
             }

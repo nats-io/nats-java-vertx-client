@@ -6,6 +6,7 @@ import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
+import io.nats.client.support.Status;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.*;
@@ -43,14 +45,10 @@ public class NatsClientTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        natsServerRunner = new NatsServerRunner(0, false, true);
-        Thread.sleep(1);
-
-
+        createServer();
         port = natsServerRunner.getPort();
 
-
-        Options.Builder builder = new Options.Builder()
+        Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
                 .servers(new String[]{"localhost:" + port});
         nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
@@ -795,5 +793,85 @@ public class NatsClientTest {
             throw new IllegalStateException(error.get());
         }
         return natsClient;
+    }
+
+
+    private void createServer() throws IOException, InterruptedException {
+        natsServerRunner = new NatsServerRunner(0, false, true);
+        Thread.sleep(200);
+
+
+        port = natsServerRunner.getPort();
+
+
+
+        for (int i = 0; i < 100; i++) {
+            Thread.sleep(200);
+            final AtomicReference<ConnectionListener.Events> lastEvent = new AtomicReference<>();
+            final CountDownLatch latch = new CountDownLatch(1);
+            final String serverName = "name" + System.currentTimeMillis();
+
+            Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
+                    .servers(new String[]{"localhost:" + port}).errorListener(new ErrorListener() {
+                        @Override
+                        public void errorOccurred(Connection conn, String error) {
+                            System.out.println(error);
+                        }
+
+                        @Override
+                        public void exceptionOccurred(Connection conn, Exception exp) {
+                            exp.printStackTrace();
+                        }
+
+                        @Override
+                        public void slowConsumerDetected(Connection conn, Consumer consumer) {
+                            ErrorListener.super.slowConsumerDetected(conn, consumer);
+                        }
+
+                        @Override
+                        public void messageDiscarded(Connection conn, Message msg) {
+                            ErrorListener.super.messageDiscarded(conn, msg);
+                        }
+
+                        @Override
+                        public void heartbeatAlarm(Connection conn, JetStreamSubscription sub, long lastStreamSequence, long lastConsumerSequence) {
+                            ErrorListener.super.heartbeatAlarm(conn, sub, lastStreamSequence, lastConsumerSequence);
+                        }
+
+                        @Override
+                        public void unhandledStatus(Connection conn, JetStreamSubscription sub, Status status) {
+                            ErrorListener.super.unhandledStatus(conn, sub, status);
+                        }
+
+                        @Override
+                        public void pullStatusWarning(Connection conn, JetStreamSubscription sub, Status status) {
+                            ErrorListener.super.pullStatusWarning(conn, sub, status);
+                        }
+
+                        @Override
+                        public void pullStatusError(Connection conn, JetStreamSubscription sub, Status status) {
+                            ErrorListener.super.pullStatusError(conn, sub, status);
+                        }
+
+                        @Override
+                        public void flowControlProcessed(Connection conn, JetStreamSubscription sub, String subject, FlowControlSource source) {
+                            ErrorListener.super.flowControlProcessed(conn, sub, subject, source);
+                        }
+                    }).connectionListener(new ConnectionListener() {
+                        @Override
+                        public void connectionEvent(Connection conn, Events type) {
+                            lastEvent.set(type);
+                            latch.countDown();
+                            System.out.println("CONNECTION " + type);
+                        }
+                    }).connectionName(serverName);
+            Connection connect = Nats.connect(builder.build());
+            latch.await(1, TimeUnit.SECONDS);
+            if (lastEvent.get() == ConnectionListener.Events.CONNECTED) {
+                connect.close();
+                break;
+            }
+
+        }
     }
 }

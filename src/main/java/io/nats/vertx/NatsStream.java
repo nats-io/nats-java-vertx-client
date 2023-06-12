@@ -180,7 +180,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param maxWaitMillis the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    Future<List<Message>> fetch(final String subject, final int batchSize, final long maxWaitMillis);
+    Future<List<NatsVertxMessage>> fetch(final String subject, final int batchSize, final long maxWaitMillis);
 
     /**
      * Fetch a list of messages up to the batch size, waiting no longer than maxWait.
@@ -192,7 +192,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param maxWait the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    default Future<List<Message>> fetch(final String subject, final int batchSize, final Duration maxWait) {
+    default Future<List<NatsVertxMessage>> fetch(final String subject, final int batchSize, final Duration maxWait) {
         return fetch(subject, batchSize, maxWait.toMillis());
     }
 
@@ -207,7 +207,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param maxWaitMillis the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    Future<Iterator<Message>> iterate(final String subject, final int batchSize, final long maxWaitMillis);
+    Future<Iterator<NatsVertxMessage>> iterate(final String subject, final int batchSize, final long maxWaitMillis);
 
     /**
      * Prepares an iterator. This uses pullExpiresIn under the covers, and manages all responses.
@@ -220,7 +220,7 @@ public interface NatsStream extends WriteStream<Message> {
      * @param maxWait the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    default Future<Iterator<Message>> iterate(final String subject, final int batchSize, final Duration maxWait) {
+    default Future<Iterator<NatsVertxMessage>> iterate(final String subject, final int batchSize, final Duration maxWait) {
         return iterate(subject, batchSize, maxWait.toMillis());
     }
 

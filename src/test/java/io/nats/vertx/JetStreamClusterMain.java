@@ -137,7 +137,7 @@ public class JetStreamClusterMain {
     }
 
     private static Connection getConnection() throws IOException, InterruptedException {
-        final Options options = new Options.Builder()
+        final Options options = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
                 .servers(new String[]{"nats://localhost:4221", "nats://localhost:4222",
                 "nats://localhost:4223"}).connectionListener(new ConnectionListener() {
             @Override

@@ -1,6 +1,5 @@
 package io.nats.vertx;
 
-import io.nats.client.Message;
 import io.vertx.core.Future;
 
 import java.time.Duration;
@@ -15,7 +14,7 @@ public interface SubscriptionReadStream {
      * @param maxWaitMillis the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    Future<List<Message>> fetch(final int batchSize, final long maxWaitMillis);
+    Future<List<NatsVertxMessage>> fetch(final int batchSize, final long maxWaitMillis);
 
     /**
      * Fetch a list of messages up to the batch size, waiting no longer than maxWait.
@@ -26,7 +25,7 @@ public interface SubscriptionReadStream {
      * @param maxWait the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    default Future<List<Message>> fetch( final int batchSize, final Duration maxWait) {
+    default Future<List<NatsVertxMessage>> fetch( final int batchSize, final Duration maxWait) {
         return fetch(batchSize, maxWait.toMillis());
     }
 
@@ -36,12 +35,11 @@ public interface SubscriptionReadStream {
      * the max wait period. It will stop if the batch is fulfilled or if there are fewer
      * than batch size messages. 408 Status messages are ignored and will not count toward the
      * fulfilled batch size. ! Pull subscriptions only. Push subscription will throw IllegalStateException
-     * @param subject subject The subject for the subscription.
      * @param batchSize batchSize The batch size, only use if you passed the right publish options.
      * @param maxWaitMillis the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    Future<Iterator<Message>> iterate(final String subject, final int batchSize, final long maxWaitMillis);
+    Future<Iterator<NatsVertxMessage>> iterate( final int batchSize, final long maxWaitMillis);
 
     /**
      * Prepares an iterator. This uses pullExpiresIn under the covers, and manages all responses.
@@ -49,13 +47,12 @@ public interface SubscriptionReadStream {
      * the max wait period. It will stop if the batch is fulfilled or if there are fewer
      * than batch size messages. 408 Status messages are ignored and will not count toward the
      * fulfilled batch size. ! Pull subscriptions only. Push subscription will throw IllegalStateException
-     * @param subject subject The subject for the subscription.
-     * @param batchSize batchSize The batch size, only use if you passed the right publish options.
+      * @param batchSize batchSize The batch size, only use if you passed the right publish options.
      * @param maxWait the maximum time to wait for the first message, in milliseconds
      * @return future message.
      */
-    default Future<Iterator<Message>> iterate(final String subject, final int batchSize, final Duration maxWait) {
-        return iterate(subject, batchSize, maxWait.toMillis());
+    default Future<Iterator<NatsVertxMessage>> iterate( final int batchSize, final Duration maxWait) {
+        return iterate( batchSize, maxWait.toMillis());
     }
 
     /**

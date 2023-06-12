@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * NATS stream implementation.
@@ -206,17 +207,7 @@ public class NatsStreamImpl implements NatsStream {
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
 
-        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
-            @Override
-            public Message message() {
-                return event;
-            }
-
-            @Override
-            public Vertx vertx() {
-                return vertx;
-            }
-        });
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
         context().executeBlocking(event -> {
             try {
                 final Dispatcher dispatcher = connection.createDispatcher();
@@ -234,16 +225,7 @@ public class NatsStreamImpl implements NatsStream {
     @Deprecated
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
-        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
-            @Override
-            public Message message() {
-                return event;
-            }
-            @Override
-            public Vertx vertx() {
-                return vertx;
-            }
-        });
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
 
         context().executeBlocking(event -> {
             try {
@@ -282,8 +264,8 @@ public class NatsStreamImpl implements NatsStream {
        return subscribe(subject, null);
     }
 
-    public Future<List<Message>> fetch(final String subject, final int batchSize, final long maxWaitMillis) {
-        final Promise<List<Message>> promise = context().promise();
+    public Future<List<NatsVertxMessage>> fetch(final String subject, final int batchSize, final long maxWaitMillis) {
+        final Promise<List<NatsVertxMessage>> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
@@ -291,7 +273,7 @@ public class NatsStreamImpl implements NatsStream {
                     throw new IllegalStateException("Subscription not found " + subject);
                 }
                 final List<Message> messages = jetStreamSubscription.fetch(batchSize, maxWaitMillis);
-                promise.complete(messages);
+                promise.complete(NatsVertxMessageImpl.listOf(messages, context()));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -300,8 +282,8 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Iterator<Message>> iterate(String subject, int batchSize, long maxWaitMillis) {
-        final Promise<Iterator<Message>> promise = context().promise();
+    public Future<Iterator<NatsVertxMessage>> iterate(String subject, int batchSize, long maxWaitMillis) {
+        final Promise<Iterator<NatsVertxMessage>> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
@@ -309,7 +291,17 @@ public class NatsStreamImpl implements NatsStream {
                     throw new IllegalStateException("Subscription not found " + subject);
                 }
                 final Iterator<Message> messages = jetStreamSubscription.iterate(batchSize, maxWaitMillis);
-                promise.complete(messages);
+                promise.complete(new Iterator<NatsVertxMessage>() {
+                    @Override
+                    public boolean hasNext() {
+                        return messages.hasNext();
+                    }
+
+                    @Override
+                    public NatsVertxMessage next() {
+                        return new NatsVertxMessageImpl(messages.next(), context());
+                    }
+                });
             } catch (Exception e) {
                 handleException(promise, e);
             }

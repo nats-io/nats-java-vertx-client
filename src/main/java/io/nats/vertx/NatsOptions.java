@@ -7,6 +7,8 @@ import io.nats.client.impl.ErrorListenerLoggerImpl;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 
+import java.time.Duration;
+
 /** Holds the NATS options. */
 public class NatsOptions {
     private Options.Builder natsBuilder;
@@ -32,7 +34,7 @@ public class NatsOptions {
      */
     public Options.Builder getNatsBuilder() {
         if (natsBuilder == null) {
-            natsBuilder = new Options.Builder();
+            natsBuilder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5));
         }
         configureExceptionHandler();
         return natsBuilder;
