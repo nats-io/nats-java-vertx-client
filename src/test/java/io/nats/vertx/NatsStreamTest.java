@@ -773,28 +773,21 @@ public class NatsStreamTest {
 
         for (int i = 0; i < 10; i++) {
 
-
-            final NatsMessage message = NatsMessage.builder().subject(SUBJECT_NAME)
-                    .data(data + i, StandardCharsets.UTF_8)
-                    .build();
-
             jetStreamPub.publish(SUBJECT_NAME, data + i)
-                    .onSuccess(event -> {
-
-                                sends.incrementAndGet();
-                                System.out.println("SUCCESS " + sends.get());
-                            }
+                    .onSuccess(event -> sends.incrementAndGet()
                     ).onFailure(error -> {
-                        System.out.println("ERROR " + errors.get());
                         errors.incrementAndGet();
                         errorsLatch.countDown();
                     });
 
-
             if (i == 4) {
-                Thread.sleep(1000);
-                natsServerRunner.close();
-                Thread.sleep(1000);
+                try {
+                    Thread.sleep(1000);
+                    natsServerRunner.close();
+                    Thread.sleep(1000);
+                }catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         }
 
@@ -852,21 +845,22 @@ public class NatsStreamTest {
 
             jetStreamPub.publish(message, po)
                     .onSuccess(event -> {
-
                                 sends.incrementAndGet();
-                                System.out.println("SUCCESS " + sends.get());
                             }
                     ).onFailure(error -> {
-                        System.out.println("ERROR " + errors.get());
                         errors.incrementAndGet();
                         errorsLatch.countDown();
                     });
 
 
             if (i == 4) {
-                Thread.sleep(100);
-                natsServerRunner.close();
-                Thread.sleep(100);
+                try {
+                    Thread.sleep(100);
+                    natsServerRunner.close();
+                    Thread.sleep(100);
+                }catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         }
 
