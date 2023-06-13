@@ -16,7 +16,7 @@ To use this component, add the following dependency to the dependencies section 
 ```xml
 <dependency>
   <groupId>io.nats</groupId>
-  <artifactId>nats-vertx-nats-interface</artifactId>
+  <artifactId>nats-vertx-interface</artifactId>
   <version>${maven.version}</version>
 </dependency>
 ```
@@ -24,7 +24,7 @@ To use this component, add the following dependency to the dependencies section 
 #### Gradle (in your `build.gradle` file):
 
 ```
-compile io.nats:nats-vertx-nats-interface:${maven.version}
+compile io.nats:nats-vertx-interface:${maven.version}
 ```
 
 
