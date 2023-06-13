@@ -10,10 +10,13 @@ import io.nats.client.support.Status;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.junit5.VertxExtension;
 import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(VertxExtension.class)
 public class NatsClientTest {
 
     final String SUBJECT_NAME = "testSubject";
@@ -71,7 +75,7 @@ public class NatsClientTest {
     @Test
     public void testConnect() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
+        final NatsClient natsClient = TestUtils.natsClient(port, Vertx.vertx(), Throwable::printStackTrace);
 
         assertNotNull(natsClient.getConnection());
 
@@ -80,8 +84,10 @@ public class NatsClientTest {
     @Test
     public void testPubSub() throws InterruptedException {
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        Vertx vertx = Vertx.vertx();
+
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch latch = new CountDownLatch(10);
@@ -106,8 +112,8 @@ public class NatsClientTest {
                 .onSuccess(event -> System.out.println("Success"));
 
 
-        closeClient(natsClientPub);
-        closeClient(natsClientSub);
+        TestUtils.closeClient(natsClientPub);
+        TestUtils.closeClient(natsClientSub);
 
 
     }
@@ -116,8 +122,8 @@ public class NatsClientTest {
     @Test
     public void testPubSub100() throws InterruptedException {
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);;
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch latch = new CountDownLatch(100);
@@ -136,8 +142,8 @@ public class NatsClientTest {
         latch.await(10, TimeUnit.SECONDS);
 
         assertTrue(queue.size() > 98);
-        closeClient(natsClientPub);
-        closeClient(natsClientSub);
+        TestUtils.closeClient(natsClientPub);
+        TestUtils.closeClient(natsClientSub);
 
 
     }
@@ -145,8 +151,8 @@ public class NatsClientTest {
     @Test
     public void testWriteSub() throws InterruptedException {
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
@@ -182,8 +188,8 @@ public class NatsClientTest {
     public void testWriteAsyncResultSub() throws InterruptedException {
 
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
@@ -222,8 +228,8 @@ public class NatsClientTest {
     @Test
     public void testPubMessageSub() throws InterruptedException {
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);;
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
@@ -259,8 +265,8 @@ public class NatsClientTest {
     public void testPubMessageAsyncResultSub() throws InterruptedException {
 
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
@@ -299,8 +305,8 @@ public class NatsClientTest {
     public void testPubMessageSubWithHeaderAndReplyTo() throws InterruptedException {
 
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
@@ -331,8 +337,8 @@ public class NatsClientTest {
 
         assertEquals(10, queue.size());
 
-        closeClient(natsClientPub);
-        closeClient(natsClientSub);
+        TestUtils.closeClient(natsClientPub);
+        TestUtils.closeClient(natsClientSub);
     }
 
 
@@ -340,8 +346,8 @@ public class NatsClientTest {
     public void testPubMessageSubWithHeader() throws InterruptedException {
 
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
@@ -372,16 +378,16 @@ public class NatsClientTest {
 
         assertEquals(10, queue.size());
 
-        closeClient(natsClientPub);
-        closeClient(natsClientSub);
+        TestUtils.closeClient(natsClientPub);
+        TestUtils.closeClient(natsClientSub);
     }
 
 
     @Test
     public void testPubSubReplyTo() throws InterruptedException {
 
-        final NatsClient natsClientPub = getNatsClient();
-        final NatsClient natsClientSub = getNatsClient();
+        final NatsClient natsClientPub = TestUtils.natsClient(port);
+        final NatsClient natsClientSub = TestUtils.natsClient(port);
 
 
         final CountDownLatch latch = new CountDownLatch(10);
@@ -411,8 +417,8 @@ public class NatsClientTest {
     @Test
     public void testRequestReply() throws InterruptedException {
 
-        final NatsClient natsRequester = getNatsClient();
-        final NatsClient natsReply = getNatsClient();
+        final NatsClient natsRequester = TestUtils.natsClient(port);
+        final NatsClient natsReply = TestUtils.natsClient(port);
 
 
         natsReply.subscribe("REQUEST_SUBJECT", event -> {
@@ -444,15 +450,15 @@ public class NatsClientTest {
         assertNotNull(reply);
         assertEquals("HELLO_MOM", new String(reply.getData(), StandardCharsets.UTF_8));
 
-        closeClient(natsRequester);
-        closeClient(natsReply);
+        TestUtils.closeClient(natsRequester);
+        TestUtils.closeClient(natsReply);
     }
 
     @Test
     public void testRequestMessageReply() throws InterruptedException {
 
-        final NatsClient natsRequester = getNatsClient();
-        final NatsClient natsReply = getNatsClient();
+        final NatsClient natsRequester = TestUtils.natsClient(port);
+        final NatsClient natsReply = TestUtils.natsClient(port);
 
 
         natsReply.subscribe("REQUEST_SUBJECT", event -> {
@@ -490,16 +496,16 @@ public class NatsClientTest {
         assertNotNull(reply);
         assertEquals("HELLO_MOM", new String(reply.getData(), StandardCharsets.UTF_8));
 
-        closeClient(natsRequester);
-        closeClient(natsReply);
+        TestUtils.closeClient(natsRequester);
+        TestUtils.closeClient(natsReply);
     }
 
 
     @Test
     public void testRequestMessageReplyWithHeaders() throws InterruptedException {
 
-        final NatsClient natsRequester = getNatsClient();
-        final NatsClient natsReply = getNatsClient();
+        final NatsClient natsRequester = TestUtils.natsClient(port);
+        final NatsClient natsReply = TestUtils.natsClient(port);
         final Headers headers = new Headers().put("key", "value");
 
 
@@ -544,16 +550,16 @@ public class NatsClientTest {
 
 
 
-        closeClient(natsRequester);
-        closeClient(natsReply);
+        TestUtils.closeClient(natsRequester);
+        TestUtils.closeClient(natsReply);
     }
 
 
     @Test
     public void testRequestMessageReplyWithHeadersAndDuration() throws InterruptedException {
 
-        final NatsClient natsRequester = getNatsClient();
-        final NatsClient natsReply = getNatsClient();
+        final NatsClient natsRequester = TestUtils.natsClient(port);
+        final NatsClient natsReply = TestUtils.natsClient(port);
         final Headers headers = new Headers().put("key", "value");
         final Duration duration = Duration.ofSeconds(5);
 
@@ -599,15 +605,15 @@ public class NatsClientTest {
 
 
 
-        closeClient(natsRequester);
-        closeClient(natsReply);
+        TestUtils.closeClient(natsRequester);
+        TestUtils.closeClient(natsReply);
     }
 
     @Test
     public void testRequestMessageReplyAsyncResult() throws InterruptedException {
 
-        final NatsClient natsRequester = getNatsClient();
-        final NatsClient natsReply = getNatsClient();
+        final NatsClient natsRequester = TestUtils.natsClient(port);
+        final NatsClient natsReply = TestUtils.natsClient(port);
 
 
         natsReply.subscribe("REQUEST_SUBJECT", event -> {
@@ -648,14 +654,14 @@ public class NatsClientTest {
         assertNotNull(reply);
         assertEquals("HELLO_MOM", new String(reply.getData(), StandardCharsets.UTF_8));
 
-        closeClient(natsRequester);
-        closeClient(natsReply);
+        TestUtils.closeClient(natsRequester);
+        TestUtils.closeClient(natsReply);
     }
 
     @Test
     public void testSub() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
+        final NatsClient natsClient = TestUtils.natsClient(port);
 
 
         final CountDownLatch latch = new CountDownLatch(10);
@@ -680,13 +686,13 @@ public class NatsClientTest {
 
         assertTrue( queue.size() >= 8);
 
-        closeClient(natsClient);
+        TestUtils.closeClient(natsClient);
     }
 
     @Test
     public void testSubWithError() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
+        final NatsClient natsClient = TestUtils.natsClient(port);
 
 
         final CountDownLatch latch = new CountDownLatch(10);
@@ -705,14 +711,14 @@ public class NatsClientTest {
 
         latch.await(1, TimeUnit.SECONDS);
 
-        closeClient(natsClient);
+        TestUtils.closeClient(natsClient);
     }
 
 
     @Test
     public void testSubWithQueueName() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
+        final NatsClient natsClient = TestUtils.natsClient(port);
 
 
         final CountDownLatch latch = new CountDownLatch(10);
@@ -738,140 +744,25 @@ public class NatsClientTest {
         natsClient.unsubscribe(SUBJECT_NAME);
 
         assertTrue(queue.size() > 8);
-        closeClient(natsClient);
+        TestUtils.closeClient(natsClient);
     }
 
     @Test
     public void testForceFail() throws InterruptedException {
 
         try {
-            final NatsClient natsClient = getNatsClient(port + 10);
+            final NatsClient natsClient = TestUtils.natsClient(port + 10);
             fail();
         } catch (Exception ex) {
 
         }
     }
 
-    private void closeClient(NatsClient natsClient) throws InterruptedException {
-        final CountDownLatch endLatch = new CountDownLatch(1);
-        natsClient.end().onSuccess(event -> endLatch.countDown()).onFailure(error -> error.printStackTrace());
-        endLatch.await(10, TimeUnit.SECONDS);
-        if ( endLatch.getCount() > 0 ) {
-            fail();
-        }
 
 
-    }
 
-    private NatsClient getNatsClient() throws InterruptedException {
-       return getNatsClient(port);
-    }
-    private NatsClient getNatsClient(int port) throws InterruptedException {
-        final NatsOptions natsOptions = new NatsOptions();
-        natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port});
-        final NatsClient natsClient = NatsClient.create(natsOptions);
-        final Future<Void> connect = natsClient.connect();
-
-        natsClient.exceptionHandler(Throwable::printStackTrace);
-
-        //No op methods
-        natsClient.setWriteQueueMaxSize(100);
-        natsClient.writeQueueFull();
-        natsClient.drainHandler(event -> {
-        });
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        connect.onSuccess(event -> {
-            latch.countDown();
-        }).onFailure(event -> {
-            error.set(event);
-            latch.countDown();
-        }).onFailure(Throwable::printStackTrace);
-        latch.await(1, TimeUnit.SECONDS);
-        if (error.get() != null) {
-            throw new IllegalStateException(error.get());
-        }
-        return natsClient;
-    }
-
-
-    private void createServer() throws IOException, InterruptedException {
-        natsServerRunner = new NatsServerRunner(0, false, true);
-        Thread.sleep(200);
-
-
+    private void createServer() throws Exception {
+        natsServerRunner = TestUtils.startServer();
         port = natsServerRunner.getPort();
-
-
-
-        for (int i = 0; i < 100; i++) {
-            Thread.sleep(200);
-            final AtomicReference<ConnectionListener.Events> lastEvent = new AtomicReference<>();
-            final CountDownLatch latch = new CountDownLatch(1);
-            final String serverName = "name" + System.currentTimeMillis();
-
-            Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                    .servers(new String[]{"localhost:" + port}).errorListener(new ErrorListener() {
-                        @Override
-                        public void errorOccurred(Connection conn, String error) {
-                            System.out.println(error);
-                        }
-
-                        @Override
-                        public void exceptionOccurred(Connection conn, Exception exp) {
-                            exp.printStackTrace();
-                        }
-
-                        @Override
-                        public void slowConsumerDetected(Connection conn, Consumer consumer) {
-                            ErrorListener.super.slowConsumerDetected(conn, consumer);
-                        }
-
-                        @Override
-                        public void messageDiscarded(Connection conn, Message msg) {
-                            ErrorListener.super.messageDiscarded(conn, msg);
-                        }
-
-                        @Override
-                        public void heartbeatAlarm(Connection conn, JetStreamSubscription sub, long lastStreamSequence, long lastConsumerSequence) {
-                            ErrorListener.super.heartbeatAlarm(conn, sub, lastStreamSequence, lastConsumerSequence);
-                        }
-
-                        @Override
-                        public void unhandledStatus(Connection conn, JetStreamSubscription sub, Status status) {
-                            ErrorListener.super.unhandledStatus(conn, sub, status);
-                        }
-
-                        @Override
-                        public void pullStatusWarning(Connection conn, JetStreamSubscription sub, Status status) {
-                            ErrorListener.super.pullStatusWarning(conn, sub, status);
-                        }
-
-                        @Override
-                        public void pullStatusError(Connection conn, JetStreamSubscription sub, Status status) {
-                            ErrorListener.super.pullStatusError(conn, sub, status);
-                        }
-
-                        @Override
-                        public void flowControlProcessed(Connection conn, JetStreamSubscription sub, String subject, FlowControlSource source) {
-                            ErrorListener.super.flowControlProcessed(conn, sub, subject, source);
-                        }
-                    }).connectionListener(new ConnectionListener() {
-                        @Override
-                        public void connectionEvent(Connection conn, Events type) {
-                            lastEvent.set(type);
-                            latch.countDown();
-                            System.out.println("CONNECTION " + type);
-                        }
-                    }).connectionName(serverName);
-            Connection connect = Nats.connect(builder.build());
-            latch.await(1, TimeUnit.SECONDS);
-            if (lastEvent.get() == ConnectionListener.Events.CONNECTED) {
-                connect.close();
-                break;
-            }
-
-        }
     }
 }

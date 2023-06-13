@@ -6,16 +6,13 @@ import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
-import io.nats.client.support.Status;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Iterator;
@@ -71,90 +68,16 @@ public class NatsStreamTest {
 
     }
 
-    private void createServer() throws IOException, InterruptedException {
-        natsServerRunner = new NatsServerRunner(0, false, true);
-        Thread.sleep(200);
-
-
+    private void createServer() throws Exception {
+        natsServerRunner = TestUtils.startServer();
         port = natsServerRunner.getPort();
-
-
-
-        for (int i = 0; i < 100; i++) {
-            Thread.sleep(200);
-            final AtomicReference<ConnectionListener.Events> lastEvent = new AtomicReference<>();
-            final CountDownLatch latch = new CountDownLatch(1);
-            final String serverName = "name" + System.currentTimeMillis();
-
-            Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                    .servers(new String[]{"localhost:" + port}).errorListener(new ErrorListener() {
-                        @Override
-                        public void errorOccurred(Connection conn, String error) {
-                            System.out.println(error);
-                        }
-
-                        @Override
-                        public void exceptionOccurred(Connection conn, Exception exp) {
-                            exp.printStackTrace();
-                        }
-
-                        @Override
-                        public void slowConsumerDetected(Connection conn, Consumer consumer) {
-                            ErrorListener.super.slowConsumerDetected(conn, consumer);
-                        }
-
-                        @Override
-                        public void messageDiscarded(Connection conn, Message msg) {
-                            ErrorListener.super.messageDiscarded(conn, msg);
-                        }
-
-                        @Override
-                        public void heartbeatAlarm(Connection conn, JetStreamSubscription sub, long lastStreamSequence, long lastConsumerSequence) {
-                            ErrorListener.super.heartbeatAlarm(conn, sub, lastStreamSequence, lastConsumerSequence);
-                        }
-
-                        @Override
-                        public void unhandledStatus(Connection conn, JetStreamSubscription sub, Status status) {
-                            ErrorListener.super.unhandledStatus(conn, sub, status);
-                        }
-
-                        @Override
-                        public void pullStatusWarning(Connection conn, JetStreamSubscription sub, Status status) {
-                            ErrorListener.super.pullStatusWarning(conn, sub, status);
-                        }
-
-                        @Override
-                        public void pullStatusError(Connection conn, JetStreamSubscription sub, Status status) {
-                            ErrorListener.super.pullStatusError(conn, sub, status);
-                        }
-
-                        @Override
-                        public void flowControlProcessed(Connection conn, JetStreamSubscription sub, String subject, FlowControlSource source) {
-                            ErrorListener.super.flowControlProcessed(conn, sub, subject, source);
-                        }
-                    }).connectionListener(new ConnectionListener() {
-                        @Override
-                        public void connectionEvent(Connection conn, Events type) {
-                            lastEvent.set(type);
-                            latch.countDown();
-                            System.out.println("CONNECTION " + type);
-                        }
-                    }).connectionName(serverName);
-            Connection connect = Nats.connect(builder.build());
-            latch.await(1, TimeUnit.SECONDS);
-            if (lastEvent.get() == ConnectionListener.Events.CONNECTED) {
-                connect.close();
-                break;
-            }
-
-        }
     }
 
 
     @Test
     public void testSubJetStreamWithOptions() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
+        final NatsClient natsClient = TestUtils.natsClient(port);
         final NatsStream natsStream = getJetStreamWithOptions(natsClient);
 
         testJetStreamPub(natsClient, natsStream);
@@ -163,8 +86,8 @@ public class NatsStreamTest {
     @Test
     public void testSubJetStream() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream natsStream = getJetStream(natsClient);
+        final NatsClient natsClient = TestUtils.natsClient(port);
+        final NatsStream natsStream = TestUtils.jetStream(natsClient);
 
         testJetStreamPub(natsClient, natsStream);
 
@@ -194,8 +117,8 @@ public class NatsStreamTest {
     @Test
     public void testSubJetStreamWithQueueName() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream natsStream = getJetStream(natsClient);
+        final NatsClient natsClient = TestUtils.natsClient(port);
+        final NatsStream natsStream = TestUtils.jetStream(natsClient);
 
         final CountDownLatch latch = new CountDownLatch(10);
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
@@ -221,8 +144,8 @@ public class NatsStreamTest {
     @Test
     public void testSubJetStreamWithPullDebug() throws Exception {
 
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream natsStream = getJetStream(natsClient);
+        final NatsClient natsClient = TestUtils.natsClient(port);
+        final NatsStream natsStream = TestUtils.jetStream(natsClient);
 
         final CountDownLatch latch = new CountDownLatch(10);
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
@@ -263,10 +186,10 @@ public class NatsStreamTest {
     @Test
     public void testSubJetStreamWithFetch() throws Exception {
         final AtomicInteger errorsFromHandler = new AtomicInteger();
-        final NatsClient natsClient = getNatsClient(event -> {
+        final NatsClient natsClient = TestUtils.natsClient(port, Vertx.vertx(), event -> {
             errorsFromHandler.incrementAndGet();
         } );
-        final NatsStream natsStream = getJetStream(natsClient);
+        final NatsStream natsStream = TestUtils.jetStream(natsClient);
         final CountDownLatch latch = new CountDownLatch(10);
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
         final String data = "data";
@@ -302,10 +225,10 @@ public class NatsStreamTest {
     @Test
     public void testSubJetStreamWithIterate() throws Exception {
         final AtomicInteger errorsFromHandler = new AtomicInteger();
-        final NatsClient natsClient = getNatsClient(event -> {
+        final NatsClient natsClient = TestUtils.natsClient(port, Vertx.vertx(), event -> {
             errorsFromHandler.incrementAndGet();
         } );
-        final NatsStream natsStream = getJetStream(natsClient);
+        final NatsStream natsStream = TestUtils.jetStream(natsClient);
         final CountDownLatch latch = new CountDownLatch(10);
         final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(20);
         final String data = "data";
@@ -337,35 +260,6 @@ public class NatsStreamTest {
         closeClient(natsClient);
     }
 
-    private NatsStream getJetStream(NatsClient natsClient) throws InterruptedException {
-        final Future<NatsStream> connect = natsClient.jetStream();
-
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final AtomicReference<NatsStream> stream = new AtomicReference<>();
-        connect.onSuccess(event -> {
-            // Call no op methods.
-            event.drainHandler(event1 -> {
-            });
-            event.setWriteQueueMaxSize(100);
-            event.writeQueueFull();
-            event.end(endEvent -> {
-            });
-            stream.set(event);
-            latch.countDown();
-        }).onFailure(event -> {
-            error.set(event);
-            latch.countDown();
-        });
-        latch.await(10, TimeUnit.SECONDS);
-        if (error.get() != null) {
-            fail();
-        }
-        return stream.get();
-    }
-
-
     private NatsStream getJetStreamWithOptions(NatsClient natsClient) throws InterruptedException {
         final JetStreamOptions options = JetStreamOptions.builder().build();
         final Future<NatsStream> connect = natsClient.jetStream(options);
@@ -389,60 +283,19 @@ public class NatsStreamTest {
 
 
     private void closeClient(NatsClient natsClient) throws InterruptedException {
-        final CountDownLatch endLatch = new CountDownLatch(1);
-        natsClient.end().onSuccess(event -> endLatch.countDown());
-        endLatch.await(3, TimeUnit.SECONDS);
+        TestUtils.closeClient(natsClient);
     }
 
-    private NatsClient getNatsClient(Handler<Throwable> exceptionHandler) throws InterruptedException {
-        final NatsOptions natsOptions = new NatsOptions();
-        natsOptions.setVertx(Vertx.vertx());
-        natsOptions.setExceptionHandler(exceptionHandler);
-        natsOptions.setNatsBuilder(new Options.Builder());
-        natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port}).connectionListener(new ConnectionListener() {
-            @Override
-            public void connectionEvent(Connection conn, Events type) {
-                System.out.println("Connection EVENT " + type);
-            }
-        });
-        final NatsClient natsClient = NatsClient.create(natsOptions);
-        final Future<Void> connect = natsClient.connect();
-
-        natsClient.exceptionHandler(Throwable::printStackTrace);
-
-        //No op methods
-        natsClient.setWriteQueueMaxSize(100);
-        natsClient.writeQueueFull();
-        natsClient.drainHandler(event -> {
-        });
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        connect.onSuccess(event -> {
-            latch.countDown();
-        }).onFailure(event -> {
-            error.set(event);
-            latch.countDown();
-        });
-        latch.await(10, TimeUnit.SECONDS);
-        if (error.get() != null) {
-            throw new IllegalStateException(error.get());
-        }
-        return natsClient;
-    }
-    private NatsClient getNatsClient() throws InterruptedException {
-            return getNatsClient(event -> event.printStackTrace());
-    }
 
 
     @Test
     public void testPubMessageSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -480,11 +333,11 @@ public class NatsStreamTest {
     @Test
     public void testPubMessageSub100() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(100);
         final CountDownLatch sendLatch = new CountDownLatch(100);
@@ -518,8 +371,8 @@ public class NatsStreamTest {
     @Test
     public void testSubWithError() throws InterruptedException {
 
-        final NatsClient natsClient = getNatsClient();
-        final NatsStream stream = getJetStream(natsClient);
+        final NatsClient natsClient = TestUtils.natsClient(port);
+        final NatsStream stream = TestUtils.jetStream(natsClient);
 
 
         final CountDownLatch latch = new CountDownLatch(10);
@@ -543,11 +396,11 @@ public class NatsStreamTest {
     @Test
     public void testWriteSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -581,11 +434,11 @@ public class NatsStreamTest {
     @Test
     public void testWriteSubUnSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(5);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -647,11 +500,11 @@ public class NatsStreamTest {
     @Test
     public void testPubAsyncResultSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -690,11 +543,11 @@ public class NatsStreamTest {
     @Test
     public void testWriteAsyncResultSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -732,11 +585,11 @@ public class NatsStreamTest {
     @Test
     public void testPubMessageOptionsSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -769,12 +622,12 @@ public class NatsStreamTest {
     @Test
     public void testPubMessageOptionsSubWithHeaders() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
         final Headers headers = new Headers().put("foo", "bar");
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -812,12 +665,12 @@ public class NatsStreamTest {
     @Test
     public void testPubMessageOptionsSubWithHeadersAndPubOptions() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
         final Headers headers = new Headers().put("foo", "bar");
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -857,11 +710,11 @@ public class NatsStreamTest {
     @Test
     public void testPubSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
@@ -898,13 +751,13 @@ public class NatsStreamTest {
         final AtomicInteger errors = new AtomicInteger();
         final AtomicInteger errorsFromHandler = new AtomicInteger();
 
-        final NatsClient clientPub = getNatsClient(event -> {
+        final NatsClient clientPub =  TestUtils.natsClient(port, Vertx.vertx(), event -> {
             errorsFromHandler.incrementAndGet();
         } );
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(5);
         final CountDownLatch errorsLatch = new CountDownLatch(5);
@@ -969,13 +822,13 @@ public class NatsStreamTest {
         final AtomicInteger errors = new AtomicInteger();
         final AtomicInteger errorsFromHandler = new AtomicInteger();
 
-        final NatsClient clientPub = getNatsClient(event -> {
+        final NatsClient clientPub = TestUtils.natsClient(port, Vertx.vertx(), event -> {
             errorsFromHandler.incrementAndGet();
         } );
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(5);
         final CountDownLatch errorsLatch = new CountDownLatch(5);
@@ -1038,11 +891,11 @@ public class NatsStreamTest {
     @Test
     public void testPubBytesSub() throws InterruptedException {
 
-        final NatsClient clientPub = getNatsClient();
-        final NatsClient clientSub = getNatsClient();
+        final NatsClient clientPub = TestUtils.natsClient(port);
+        final NatsClient clientSub = TestUtils.natsClient(port);
 
-        final NatsStream jetStreamPub = getJetStream(clientPub);
-        final NatsStream jetStreamSub = getJetStream(clientSub);
+        final NatsStream jetStreamPub = TestUtils.jetStream(clientPub);
+        final NatsStream jetStreamSub = TestUtils.jetStream(clientSub);
 
         final CountDownLatch receiveLatch = new CountDownLatch(10);
         final CountDownLatch sendLatch = new CountDownLatch(10);
