@@ -8,6 +8,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -110,7 +111,7 @@ public class LoadTestMain {
     public static void setup(int port) throws Exception {
 
 
-        Options.Builder builder = new Options.Builder()
+        Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
                 .servers(new String[]{"localhost:" + port});
         Connection nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();

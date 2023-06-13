@@ -90,7 +90,7 @@ public class LoadTestOriginalMain {
     public static void setup(int port) throws Exception {
 
 
-        Options.Builder builder = new Options.Builder()
+        Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
                 .servers(new String[]{"localhost:" + port});
         Connection nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
@@ -117,7 +117,7 @@ public class LoadTestOriginalMain {
     }
 
     static Connection getNatsClient(int port) throws Exception {
-        final Options.Builder natsOptions = new Options.Builder();
+        final Options.Builder natsOptions = new Options.Builder().connectionTimeout(Duration.ofSeconds(5));
         final CountDownLatch latch = new CountDownLatch(1);
 
         natsOptions.servers(new String[]{"localhost:" + port}).connectionListener(new ConnectionListener() {

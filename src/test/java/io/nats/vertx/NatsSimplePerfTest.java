@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,7 +47,7 @@ public class NatsSimplePerfTest {
         port = natsServerRunner.getPort();
 
 
-        Options.Builder builder = new Options.Builder()
+        Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
                 .servers(new String[]{"localhost:" + port});
         nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();

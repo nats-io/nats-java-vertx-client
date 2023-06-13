@@ -5,15 +5,18 @@ import io.nats.client.api.PublishAck;
 import io.nats.client.impl.Headers;
 import io.nats.vertx.NatsStream;
 import io.nats.vertx.NatsVertxMessage;
+import io.nats.vertx.SubscriptionReadStream;
 import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * NATS stream implementation.
@@ -200,24 +203,15 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
+    @Deprecated
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
 
-        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
-            @Override
-            public Message message() {
-                return event;
-            }
-
-            @Override
-            public Vertx vertx() {
-                return vertx;
-            }
-        });
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
         context().executeBlocking(event -> {
             try {
                 final Dispatcher dispatcher = connection.createDispatcher();
-                final Subscription subscribe = jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
+                jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
@@ -228,18 +222,10 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
+    @Deprecated
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
-        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessage() {
-            @Override
-            public Message message() {
-                return event;
-            }
-            @Override
-            public Vertx vertx() {
-                return vertx;
-            }
-        });
+        final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
 
         context().executeBlocking(event -> {
             try {
@@ -256,13 +242,15 @@ public class NatsStreamImpl implements NatsStream {
 
 
     @Override
-    public Future<Void> subscribe(final String subject,  final PullSubscribeOptions so) {
-        final Promise<Void> promise = context().promise();
+    public Future<SubscriptionReadStream> subscribe(final String subject, final PullSubscribeOptions so) {
+        final Promise<SubscriptionReadStream> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription subscription = so != null ? jetStream.subscribe(subject, so) : jetStream.subscribe(subject);
+
+                final SubscriptionReadStream subscriptionReadStream = new SubscriptionReadStreamImpl(context(), subscription, exceptionHandler);
                 subscriptionMap.put(subject, subscription);
-                promise.complete();
+                promise.complete(subscriptionReadStream);
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -271,27 +259,21 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> subscribe(String subject) {
+    @Deprecated
+    public Future<SubscriptionReadStream> subscribe(String subject) {
        return subscribe(subject, null);
     }
 
-    public Future<Message> nextMessage(final String subject, final int batchSize) {
-        final Promise<Message> promise = context().promise();
+    public Future<List<NatsVertxMessage>> fetch(final String subject, final int batchSize, final long maxWaitMillis) {
+        final Promise<List<NatsVertxMessage>> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
                 if (jetStreamSubscription == null) {
                     throw new IllegalStateException("Subscription not found " + subject);
                 }
-                if (batchSize > 0) {
-                    jetStreamSubscription.pull(batchSize);
-                }
-                final Message message = jetStreamSubscription.nextMessage(Duration.ofMillis(1000));
-                if (message != null) {
-                    promise.complete(message);
-                } else {
-                    throw new IllegalStateException("No message on stream " + subject);
-                }
+                final List<Message> messages = jetStreamSubscription.fetch(batchSize, maxWaitMillis);
+                promise.complete(NatsVertxMessageImpl.listOf(messages, context()));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -300,18 +282,26 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    public Future<Void> pull(String subject, int batchSize) {
-        final Promise<Void> promise = context().promise();
+    public Future<Iterator<NatsVertxMessage>> iterate(String subject, int batchSize, long maxWaitMillis) {
+        final Promise<Iterator<NatsVertxMessage>> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription jetStreamSubscription = subscriptionMap.get(subject);
                 if (jetStreamSubscription == null) {
                     throw new IllegalStateException("Subscription not found " + subject);
                 }
+                final Iterator<Message> messages = jetStreamSubscription.iterate(batchSize, maxWaitMillis);
+                promise.complete(new Iterator<NatsVertxMessage>() {
+                    @Override
+                    public boolean hasNext() {
+                        return messages.hasNext();
+                    }
 
-                jetStreamSubscription.pull(batchSize);
-                promise.complete();
-
+                    @Override
+                    public NatsVertxMessage next() {
+                        return new NatsVertxMessageImpl(messages.next(), context());
+                    }
+                });
             } catch (Exception e) {
                 handleException(promise, e);
             }

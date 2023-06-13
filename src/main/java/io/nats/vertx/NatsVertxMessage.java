@@ -21,13 +21,8 @@ public interface NatsVertxMessage extends Message{
     /** Wrapper around the Nats Message. */
     Message message();
 
-    /** Reference to the vertx vertical where Futures are scheduled.
-     */
-    Vertx vertx();
 
-    default ContextInternal context() {
-        return (ContextInternal)  vertx().getOrCreateContext();
-    }
+    ContextInternal context();
 
     /**
      * Acknowledge the message as processed successfully.
