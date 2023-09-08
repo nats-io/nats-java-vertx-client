@@ -31,7 +31,7 @@ repositories {
 
 dependencies {
 
-    implementation 'io.nats:jnats:2.16.10'
+    implementation 'io.nats:jnats:2.16.14'
     implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
     implementation("io.netty:netty-handler:4.1.89.Final")
     implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))
