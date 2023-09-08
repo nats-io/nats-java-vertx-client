@@ -32,4 +32,9 @@ public class NatsVertxMessageImpl implements NatsVertxMessage {
     public ContextInternal context() {
         return contextInternal;
     }
+
+    @Override
+    public long consumeByteCount() {
+        return -1;
+    }
 }
