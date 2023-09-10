@@ -10,7 +10,7 @@ plugins {
 
 }
 
-def jarVersion = "2.0.0-beta18"
+def jarVersion = "2.0.0-beta19"
 group = 'io.nats'
 
 def isMerge = System.getenv("BUILD_EVENT") == "push"
@@ -33,13 +33,12 @@ dependencies {
 
     implementation 'io.nats:jnats:2.16.14'
     implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
-    implementation("io.netty:netty-handler:4.1.89.Final")
+    implementation("io.netty:netty-handler:4.1.97.Final")
     implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))
     implementation("io.vertx:vertx-core")
-    testImplementation("io.vertx:vertx-junit5")
     implementation("io.netty:netty-resolver-dns-native-macos:4.1.80.Final:osx-x86_64")
-    implementation 'io.nats:jnats-server-runner:1.0.9'
-
+    testImplementation("io.vertx:vertx-junit5")
+    testImplementation 'io.nats:jnats-server-runner:1.2.5'
 }
 
 test {
