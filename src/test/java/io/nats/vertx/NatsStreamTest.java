@@ -21,10 +21,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("CallToPrintStackTrace")
 public class NatsStreamTest {
 
     final String SUBJECT_NAME = "jetTestSubject";
@@ -158,13 +157,12 @@ public class NatsStreamTest {
         executorService.submit(() -> {
             Message message = null;
             try {
-                while (true) {
+                do {
                     message = subscription.nextMessage(Duration.ofMillis(100));
                     message.ack();
                     queue.add(message);
                     latch.countDown();
-                    if (queue.size() == 10) break;
-                }
+                } while (queue.size() != 10);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
