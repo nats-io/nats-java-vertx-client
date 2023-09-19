@@ -2,7 +2,6 @@ package io.nats.vertx.impl;
 
 import io.nats.client.Message;
 import io.nats.vertx.NatsVertxMessage;
-import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
 
 import java.util.List;
@@ -22,7 +21,6 @@ public class NatsVertxMessageImpl implements NatsVertxMessage {
         this.contextInternal = contextInternal;
     }
 
-
     @Override
     public Message message() {
         return event;
@@ -31,10 +29,5 @@ public class NatsVertxMessageImpl implements NatsVertxMessage {
     @Override
     public ContextInternal context() {
         return contextInternal;
-    }
-
-    @Override
-    public long consumeByteCount() {
-        return -1;
     }
 }
