@@ -9,7 +9,6 @@ import io.nats.client.impl.NatsJetStreamMetaData;
 import io.nats.client.support.Status;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
 
 import java.time.Duration;
@@ -250,5 +249,10 @@ public interface NatsVertxMessage extends Message{
     @Override
     default boolean isJetStream() {
         return message().isJetStream();
+    }
+
+    @Override
+    default long consumeByteCount() {
+        return message().consumeByteCount();
     }
 }
