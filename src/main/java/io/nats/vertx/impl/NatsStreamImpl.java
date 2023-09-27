@@ -11,12 +11,10 @@ import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
 
 import java.nio.charset.StandardCharsets;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 /**
  * NATS stream implementation.
@@ -203,7 +201,6 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    @Deprecated
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
 
@@ -222,7 +219,6 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    @Deprecated
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
@@ -259,7 +255,6 @@ public class NatsStreamImpl implements NatsStream {
     }
 
     @Override
-    @Deprecated
     public Future<SubscriptionReadStream> subscribe(String subject) {
        return subscribe(subject, null);
     }
