@@ -1,6 +1,9 @@
 package io.nats.vertx;
 
-import io.nats.client.*;
+import io.nats.client.Message;
+import io.nats.client.PublishOptions;
+import io.nats.client.PullSubscribeOptions;
+import io.nats.client.PushSubscribeOptions;
 import io.nats.client.api.PublishAck;
 import io.nats.client.impl.Headers;
 import io.vertx.core.AsyncResult;
@@ -63,7 +66,6 @@ public interface NatsStream extends WriteStream<Message> {
      * @param so The PushSubscribeOptions
      * @return future that returns status of subscription.
      */
-    @Deprecated
     Future<Void> subscribe(
             String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so);
 
@@ -76,7 +78,6 @@ public interface NatsStream extends WriteStream<Message> {
      * @param so The PushSubscribeOptions
      * @return future that returns status of subscription.
      */
-    @Deprecated
     Future<Void> subscribe(
             String subject,
             String queue,
@@ -100,7 +101,6 @@ public interface NatsStream extends WriteStream<Message> {
      * @param subject The subject of the stream.
      * @return future that returns status of subscription.
      */
-    @Deprecated
     Future<SubscriptionReadStream> subscribe(
             String subject) ;
 
