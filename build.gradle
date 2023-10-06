@@ -20,18 +20,21 @@ def isRelease = System.getenv("BUILD_EVENT") == "release"
 version = isRelease ? jarVersion : jarVersion + "-SNAPSHOT"
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 repositories {
     mavenCentral()
-}
+    mavenLocal()
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }}
 
 
 dependencies {
 
-    implementation 'io.nats:jnats:2.16.14'
+    implementation 'io.nats:jnats:2.17.1-SNAPSHOT'
     implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
     implementation("io.netty:netty-handler:4.1.97.Final")
     implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))

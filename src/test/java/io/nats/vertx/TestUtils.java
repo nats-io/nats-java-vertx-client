@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -53,7 +54,7 @@ public class TestUtils {
 
 
     public static NatsClient natsClient(int port) {
-        return natsClient(port, Vertx.vertx(), Throwable::printStackTrace);
+        return natsClient(port, Vertx.vertx(), System.err::println);
     }
 
     public static NatsClient natsClient(int port, Vertx vertx, Handler<Throwable> exceptionHandler) {
@@ -98,6 +99,7 @@ public class TestUtils {
 
 
     public static NatsServerRunner startServer() throws Exception {
+        NatsServerRunner.setDefaultOutputLevel(Level.WARNING);
         NatsServerRunner natsServerRunner = new NatsServerRunner(0, false, true);
 
         int port = natsServerRunner.getPort();
