@@ -29,7 +29,7 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
 
     @Override
     boolean push(NatsMessage msg) {
-        ((ContextInternal)vertx.getOrCreateContext()).dispatch(e -> {
+        ((ContextInternal)vertx.getOrCreateContext()).runOnContext(e -> {
             NatsSubscription sub = msg.getNatsSubscription();
             if (sub != null && sub.isActive()) {
                 MessageHandler handler = dispatcher.subscriptionHandlers.get(sub.getSID());
