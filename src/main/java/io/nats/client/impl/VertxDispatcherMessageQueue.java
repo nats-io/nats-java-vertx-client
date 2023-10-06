@@ -1,7 +1,6 @@
 package io.nats.client.impl;
 
 import io.nats.client.MessageHandler;
-import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
 
 import java.time.Duration;
@@ -9,12 +8,12 @@ import java.util.function.Predicate;
 
 public class VertxDispatcherMessageQueue extends MessageQueue {
     private final VertxDispatcher dispatcher;
-    private final Vertx vertx;
+    private final ContextInternal context;
 
-    VertxDispatcherMessageQueue(VertxDispatcher dispatcher, Vertx vertx) {
+    VertxDispatcherMessageQueue(VertxDispatcher dispatcher, ContextInternal context) {
         super(true);
         this.dispatcher = dispatcher;
-        this.vertx = vertx;
+        this.context = context;
     }
 
     @Override
@@ -29,7 +28,7 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
 
     @Override
     boolean push(NatsMessage msg) {
-        ((ContextInternal)vertx.getOrCreateContext()).runOnContext(e -> {
+        context.runOnContext(e -> {
             NatsSubscription sub = msg.getNatsSubscription();
             if (sub != null && sub.isActive()) {
                 MessageHandler handler = dispatcher.subscriptionHandlers.get(sub.getSID());
