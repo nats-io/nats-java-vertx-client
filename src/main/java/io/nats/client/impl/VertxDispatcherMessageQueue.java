@@ -28,31 +28,30 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
 
     @Override
     boolean push(NatsMessage msg) {
-        context.runOnContext(e -> {
-            NatsSubscription sub = msg.getNatsSubscription();
-            if (sub != null && sub.isActive()) {
-                MessageHandler handler = dispatcher.subscriptionHandlers.get(sub.getSID());
-                if (handler == null) {
-                    handler = dispatcher.defaultHandler;
-                }
-
-                if (handler != null) {
-                    sub.incrementDeliveredCount();
-                    dispatcher.incrementDeliveredCount();
-
-                    try {
-                        handler.onMessage(msg);
-                    }
-                    catch (Exception ex) {
-                        dispatcher.connection.processException(ex);
-                    }
-
-                    if (sub.reachedUnsubLimit()) {
-                        dispatcher.connection.invalidate(sub);
-                    }
-                }
+        NatsSubscription sub = msg.getNatsSubscription();
+        if (sub != null && sub.isActive()) {
+            MessageHandler handler = dispatcher.subscriptionHandlers.get(sub.getSID());
+            if (handler == null) {
+                handler = dispatcher.defaultHandler;
             }
-        });
+            if (handler != null) {
+                sub.incrementDeliveredCount();
+                dispatcher.incrementDeliveredCount();
+
+                final MessageHandler finalHandler = handler;
+                context.runOnContext(e -> {
+                    ContextInternal ctx = context.duplicate();
+                    ctx.emit(v -> {
+                        try {
+                            finalHandler.onMessage(msg);
+                        }
+                        catch (Exception ex) {
+                            dispatcher.connection.processException(ex);
+                        }
+                    });
+                });
+            }
+        }
         return true;
     }
 
