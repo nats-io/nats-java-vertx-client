@@ -2,6 +2,7 @@ package io.nats.vertx.impl;
 
 import io.nats.client.*;
 import io.nats.client.impl.Headers;
+import io.nats.client.impl.VertxDispatcherFactory;
 import io.nats.vertx.NatsClient;
 import io.nats.vertx.NatsOptions;
 import io.nats.vertx.NatsStream;
@@ -21,18 +22,18 @@ import java.util.concurrent.atomic.AtomicReference;
  * NATS Client implementation.
  */
 public class NatsClientImpl implements NatsClient {
-    private static final Duration noWait = Duration.ofNanos(1);
+    private static final Duration NO_WAIT = Duration.ofNanos(1);
+
     private final Vertx vertx;
     private final boolean periodicFlush;
-    private AtomicReference<Connection> connection = new AtomicReference<>();
+    private final AtomicReference<Connection> connection;
 
     private final Options options;
     private Promise<Void> connectFuture;
-    private AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>(Throwable::printStackTrace);
+    private final AtomicReference<Handler<Throwable>> exceptionHandler;
 
     private final long periodicFlushInterval;
-
-    private final ConcurrentHashMap<String, Subscription> subscriptionMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Subscription> subscriptionMap;
 
     /**
      * Create new client implementation.
@@ -40,16 +41,25 @@ public class NatsClientImpl implements NatsClient {
      * @param natsOptions natsOptions
      */
     public NatsClientImpl(final Options.Builder config, NatsOptions natsOptions) {
-        this.vertx = natsOptions.getVertx();
-        this.periodicFlush = natsOptions.isPeriodicFlush();
-        this.periodicFlushInterval = natsOptions.getPeriodicFlushInterval();
+        vertx = natsOptions.getVertx();
+        periodicFlush = natsOptions.isPeriodicFlush();
+        connection = new AtomicReference<>();
+        periodicFlushInterval = natsOptions.getPeriodicFlushInterval();
+        subscriptionMap = new ConcurrentHashMap<>();
+
+        config.dispatcherFactory(new VertxDispatcherFactory(context()));
         this.options = wireConnectListener(config, context());
-        if (natsOptions.getExceptionHandler()!=null)
-        this.exceptionHandler.set(natsOptions.getExceptionHandler());
+
+        if (natsOptions.getExceptionHandler() == null) {
+            exceptionHandler = new AtomicReference<>(Throwable::printStackTrace);
+        }
+        else {
+            exceptionHandler = new AtomicReference<>(natsOptions.getExceptionHandler());
+        }
     }
 
     private ContextInternal context() {
-        return (ContextInternal)  vertx.getOrCreateContext();
+        return (ContextInternal) vertx.getOrCreateContext();
     }
 
     private Options wireConnectListener(final Options.Builder config, final ContextInternal context) {
@@ -63,9 +73,9 @@ public class NatsClientImpl implements NatsClient {
                     promise.complete();
                 }
             });
-        } else {
+        }
+        else {
             final ConnectionListener connectionListener = build.getConnectionListener();
-
             config.connectionListener((conn, type) -> {
                 if (type == ConnectionListener.Events.CONNECTED) {
                     promise.complete();
@@ -75,7 +85,6 @@ public class NatsClientImpl implements NatsClient {
         }
 
         this.connectFuture = promise;
-
         return config.build();
 
     }
@@ -482,14 +491,14 @@ public class NatsClientImpl implements NatsClient {
 
     private void drainSubscription(Handler<Message> handler, final Subscription subscribe, final String subject) {
         try {
-            Message message = subscribe.nextMessage(noWait);
+            Message message = subscribe.nextMessage(NO_WAIT);
             while (message!=null) {
                 try {
                     handler.handle(message);
                 } catch (Exception e) {
                     exceptionHandler.get().handle(e);
                 }
-                message = subscribe.nextMessage(noWait);
+                message = subscribe.nextMessage(NO_WAIT);
             }
             if (subscriptionMap.containsKey(subject)) {
                 context().setTimer(100, event -> context().executeBlocking(e -> drainSubscription(handler, subscribe, subject), false));

@@ -4,17 +4,11 @@ import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
-
-import static org.junit.jupiter.api.Assertions.fail;
 
 public class LoadTestOriginalMain {
 

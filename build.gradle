@@ -26,12 +26,14 @@ java {
 
 repositories {
     mavenCentral()
-}
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }}
 
 
 dependencies {
 
-    implementation 'io.nats:jnats:2.16.14'
+    implementation 'io.nats:jnats:2.17.1-SNAPSHOT'
     implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
     implementation("io.netty:netty-handler:4.1.97.Final")
     implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))
