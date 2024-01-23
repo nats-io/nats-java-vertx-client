@@ -92,12 +92,7 @@ public class NatsOptions {
      */
     public Vertx getVertx() {
         if (vertx == null) {
-            if (vertxOptions == null) {
-                vertx = Vertx.vertx();
-            }
-            else {
-                vertx = Vertx.vertx(vertxOptions);
-            }
+            vertx = Vertx.vertx(vertxOptions);
         }
         return vertx;
     }
