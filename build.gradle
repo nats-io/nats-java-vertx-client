@@ -10,7 +10,7 @@ plugins {
 
 }
 
-def jarVersion = "2.0.0-beta21"
+def jarVersion = "2.0.2"
 group = 'io.nats'
 
 def isMerge = System.getenv("BUILD_EVENT") == "push"
@@ -28,15 +28,15 @@ repositories {
     mavenCentral()
     maven {
         url "https://oss.sonatype.org/content/repositories/snapshots"
-    }}
-
+    }
+}
 
 dependencies {
 
-    implementation 'io.nats:jnats:2.17.1-SNAPSHOT'
+    implementation 'io.nats:jnats:2.17.2'
     implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
     implementation("io.netty:netty-handler:4.1.97.Final")
-    implementation(platform("io.vertx:vertx-stack-depchain:4.4.0"))
+    implementation(platform("io.vertx:vertx-stack-depchain:4.5.1"))
     implementation("io.vertx:vertx-core")
     implementation("io.netty:netty-resolver-dns-native-macos:4.1.80.Final:osx-x86_64")
     testImplementation("io.vertx:vertx-junit5")
@@ -116,7 +116,7 @@ publishing {
                 packaging = 'jar'
                 groupId = group
                 artifactId = archivesBaseName
-                description = 'Java NATS.io server runner.'
+                description = 'Java NATS.io Vert.x thin client wrapper.'
                 url = 'https://github.com/nats-io/java-nats-server-runner'
                 licenses {
                     license {
