@@ -6,6 +6,15 @@ This component provides a NATS client for reading and sending messages from/to a
 The nats-java-vertx-client is a Java client library for connecting to the NATS messaging system. It is built on top of
 the Vert.x event-driven framework and provides an asynchronous, non-blocking API for sending and receiving messages over NATS.
 
+**Current Release**: 2.0.1 &nbsp; **Current Snapshot**: 2.0.2-SNAPSHOT
+
+[![License Apache 2](https://img.shields.io/badge/License-Apache2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.nats/nats-vertx-interface/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.nats/nats-vertx-interface)
+[![javadoc](https://javadoc.io/badge2/io.nats/nats-vertx-interface/javadoc.svg)](https://javadoc.io/doc/io.nats/nats-vertx-interface)
+[![Coverage Status](https://coveralls.io/repos/github/nats-io/nats-java-vertx-client/badge.svg?branch=main)](https://coveralls.io/github/nats-io/nats-java-vertx-client?branch=main)
+[![Build Main Badge](https://github.com/nats-io/nats-java-vertx-client/actions/workflows/build-main.yml/badge.svg?event=push)](https://github.com/nats-io/nats-java-vertx-client/actions/workflows/build-main.yml)
+[![Release Badge](https://github.com/nats-io/nats-java-vertx-client/actions/workflows/build-release.yml/badge.svg?event=release)](https://github.com/nats-io/nats.java/actions/workflows/build-release.yml)
+
 ## Using the Vert.x NATS client
 
 To use this component, add the following dependency to the dependencies section of your build descriptor:
