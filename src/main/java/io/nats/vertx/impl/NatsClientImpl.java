@@ -47,7 +47,7 @@ public class NatsClientImpl implements NatsClient {
         periodicFlushInterval = natsOptions.getPeriodicFlushInterval();
         subscriptionMap = new ConcurrentHashMap<>();
 
-        config.dispatcherFactory(new VertxDispatcherFactory(context()));
+        config.dispatcherFactory(new VertxDispatcherFactory(vertx));
         this.options = wireConnectListener(config, context());
 
         if (natsOptions.getExceptionHandler() == null) {

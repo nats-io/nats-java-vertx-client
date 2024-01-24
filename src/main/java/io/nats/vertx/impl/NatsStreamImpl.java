@@ -203,12 +203,11 @@ public class NatsStreamImpl implements NatsStream {
     @Override
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
-
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
+        final Dispatcher dispatcher = connection.createDispatcher();
         context().executeBlocking(event -> {
             try {
-                final Dispatcher dispatcher = connection.createDispatcher();
-                jetStream.subscribe(subject, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
+                jetStream.subscribe(subject, dispatcher, handlerWrapper::handle, autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
@@ -222,11 +221,10 @@ public class NatsStreamImpl implements NatsStream {
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
-
+        final Dispatcher dispatcher = connection.createDispatcher();
         context().executeBlocking(event -> {
             try {
-                final Dispatcher dispatcher = connection.createDispatcher();
-                jetStream.subscribe(subject, queue, dispatcher, msg -> handlerWrapper.handle(msg), autoAck, so);
+                jetStream.subscribe(subject, queue, dispatcher, handlerWrapper::handle, autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {

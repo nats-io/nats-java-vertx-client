@@ -6,6 +6,7 @@ import io.nats.client.Options;
 import io.nats.client.impl.ErrorListenerLoggerImpl;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 
 import java.time.Duration;
 
@@ -15,6 +16,7 @@ public class NatsOptions {
     private Vertx vertx;
     private boolean periodicFlush;
     private long periodicFlushInterval;
+    private VertxOptions vertxOptions;
 
     private Handler<Throwable> exceptionHandler;
 
@@ -90,7 +92,7 @@ public class NatsOptions {
      */
     public Vertx getVertx() {
         if (vertx == null) {
-            vertx = Vertx.vertx();
+            vertx = Vertx.vertx(vertxOptions);
         }
         return vertx;
     }
@@ -120,6 +122,11 @@ public class NatsOptions {
 
     public NatsOptions setPeriodicFlushInterval(long periodicFlushInterval) {
         this.periodicFlushInterval = periodicFlushInterval;
+        return this;
+    }
+
+    public NatsOptions setVertxOptions(VertxOptions vertxOptions) {
+        this.vertxOptions = vertxOptions;
         return this;
     }
 }
