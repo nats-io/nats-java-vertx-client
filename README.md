@@ -6,7 +6,7 @@ This component provides a NATS client for reading and sending messages from/to a
 The nats-java-vertx-client is a Java client library for connecting to the NATS messaging system. It is built on top of
 the Vert.x event-driven framework and provides an asynchronous, non-blocking API for sending and receiving messages over NATS.
 
-**Current Release**: 2.0.1 &nbsp; **Current Snapshot**: 2.0.2-SNAPSHOT
+**Current Release**: 2.0.2 &nbsp; **Current Snapshot**: 2.0.3-SNAPSHOT
 
 [![License Apache 2](https://img.shields.io/badge/License-Apache2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.nats/nats-vertx-interface/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.nats/nats-vertx-interface)
