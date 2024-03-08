@@ -317,6 +317,7 @@ public class NatsStreamImpl implements NatsStream {
                     } else {
                         subscription.unsubscribe();
                         subscriptionMap.remove(subject);
+                        promise.complete();
                     }
                 } else {
                     dispatcherMap.remove(subject);
