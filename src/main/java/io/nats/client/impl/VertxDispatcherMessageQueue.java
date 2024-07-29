@@ -1,6 +1,7 @@
 package io.nats.client.impl;
 
 import io.nats.client.MessageHandler;
+import io.nats.client.Options;
 import io.vertx.core.impl.ContextInternal;
 
 import java.time.Duration;
@@ -11,7 +12,11 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
     private final ContextInternal context;
 
     VertxDispatcherMessageQueue(VertxDispatcher dispatcher, ContextInternal context) {
-        super(true);
+        this(dispatcher, context, Options.DEFAULT_REQUEST_CLEANUP_INTERVAL);
+    }
+
+    VertxDispatcherMessageQueue(VertxDispatcher dispatcher, ContextInternal context, Duration cleanupInterval) {
+        super(true, cleanupInterval);
         this.dispatcher = dispatcher;
         this.context = context;
     }
@@ -65,7 +70,6 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
         throw new IllegalStateException("poisonTheQueue not used.");
     }
 
-    @Override
     boolean offer(NatsMessage msg) {
         throw new IllegalStateException("offer not used.");
     }
