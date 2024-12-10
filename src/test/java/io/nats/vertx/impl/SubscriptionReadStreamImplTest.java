@@ -1,6 +1,7 @@
 package io.nats.vertx.impl;
 
 
+import io.nats.NatsServerRunner;
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
@@ -10,7 +11,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
