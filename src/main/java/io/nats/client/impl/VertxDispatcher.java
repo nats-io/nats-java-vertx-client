@@ -8,7 +8,7 @@ public class VertxDispatcher extends NatsDispatcher {
 
     VertxDispatcher(NatsConnection conn, MessageHandler handler, ContextInternal context) {
         super(conn, handler);
-        vertxIncoming = new VertxDispatcherMessageQueue(this, context);
+        vertxIncoming = new VertxDispatcherMessageQueue(this, context, conn);
     }
 
     @Override
