@@ -1,6 +1,7 @@
 package io.nats.vertx.impl;
 
 
+import io.nats.NatsServerRunner;
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
@@ -10,7 +11,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -126,7 +126,7 @@ class SubscriptionReadStreamImplTest {
         subjectIndex++;
 
         Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                .servers(new String[]{"localhost:" + port});
+                .server("localhost:" + port);
         nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
         StreamInfo streamInfo = null;

@@ -7,47 +7,26 @@ import io.nats.vertx.NatsStream;
 import io.nats.vertx.NatsVertxMessage;
 import io.nats.vertx.SubscriptionReadStream;
 import io.vertx.core.*;
-import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * NATS stream implementation.
  */
-public class NatsStreamImpl implements NatsStream {
+public class NatsStreamImpl extends NatsImpl implements NatsStream {
 
-    private final JetStream jetStream;
-    private final Vertx vertx;
-
-    private final ConcurrentHashMap<String, Dispatcher> dispatcherMap = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, JetStreamSubscription> subscriptionMap = new ConcurrentHashMap<>();
-
-
-    private final Connection connection;
-
-    private final AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>();
     /**
      * Create instance
-     * @param jetStream jetStream
      * @param connection Nats connection
+     * @param jso jetStreamOptions
      * @param vertx vertx
      */
-    public NatsStreamImpl(final JetStream jetStream, final Connection connection,  final Vertx vertx,
-                          final Handler<Throwable> exceptionHandler) {
-
-        this.connection = connection;
-        this.jetStream = jetStream;
-        this.vertx = vertx;
-        this.exceptionHandler.set(exceptionHandler);
-    }
-
-    private ContextInternal context() {
-        return (ContextInternal)  vertx.getOrCreateContext();
+    public NatsStreamImpl(final Connection connection, final Vertx vertx,
+                          final Handler<Throwable> exceptionHandler, final JetStreamOptions jso) {
+        super(connection, vertx, exceptionHandler, jso);
     }
 
     @Override
@@ -73,7 +52,7 @@ public class NatsStreamImpl implements NatsStream {
 
     private void doPublish(Message data, Promise<Void> promise) {
         try {
-            PublishAck publish = jetStream.publish(data);
+            PublishAck publish = js.publish(data);
             if (publish.isDuplicate()) {
                 promise.fail("Duplicate message " + publish);
             } else if (publish.hasError()) {
@@ -88,9 +67,7 @@ public class NatsStreamImpl implements NatsStream {
 
     @Override
     public void end(Handler<AsyncResult<Void>> handler) {
-        //No Op
-        final Promise<Void> promise = context().promise();
-        handler.handle(promise.future());
+        endImpl(handler);
     }
 
     @Override
@@ -108,13 +85,12 @@ public class NatsStreamImpl implements NatsStream {
         return this;
     }
 
-
     @Override
     public Future<PublishAck> publish(final Message data) {
         final Promise<PublishAck> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-                PublishAck ack = jetStream.publish(data);
+                PublishAck ack = js.publish(data);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);
@@ -131,10 +107,9 @@ public class NatsStreamImpl implements NatsStream {
     @Override
     public Future<PublishAck> publish(final String subject, final byte[] message) {
         final Promise<PublishAck> promise = context().promise();
-
         context().executeBlocking(event -> {
             try {
-                final PublishAck ack = jetStream.publish(subject, message);
+                final PublishAck ack = js.publish(subject, message);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);
@@ -149,7 +124,7 @@ public class NatsStreamImpl implements NatsStream {
         final Promise<PublishAck> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-                PublishAck ack = jetStream.publish(data);
+                PublishAck ack = js.publish(data);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);
@@ -163,7 +138,7 @@ public class NatsStreamImpl implements NatsStream {
         final Promise<PublishAck> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-                final PublishAck ack = jetStream.publish(data, options);
+                final PublishAck ack = js.publish(data, options);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);
@@ -177,7 +152,7 @@ public class NatsStreamImpl implements NatsStream {
         final Promise<PublishAck> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-                final PublishAck ack = jetStream.publish(subject, headers, body);
+                final PublishAck ack = js.publish(subject, headers, body);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);
@@ -191,7 +166,7 @@ public class NatsStreamImpl implements NatsStream {
         final Promise<PublishAck> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-                final PublishAck ack = jetStream.publish(subject, headers, body, options);
+                final PublishAck ack = js.publish(subject, headers, body, options);
                 promise.complete(ack);
             } catch (Exception e) {
                 handleException(promise, e);
@@ -204,10 +179,10 @@ public class NatsStreamImpl implements NatsStream {
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
-        final Dispatcher dispatcher = connection.createDispatcher();
+        final Dispatcher dispatcher = conn.createDispatcher();
         context().executeBlocking(event -> {
             try {
-                jetStream.subscribe(subject, dispatcher, handlerWrapper::handle, autoAck, so);
+                js.subscribe(subject, dispatcher, handlerWrapper::handle, autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
@@ -221,10 +196,10 @@ public class NatsStreamImpl implements NatsStream {
     public Future<Void> subscribe(String subject, String queue, final Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
-        final Dispatcher dispatcher = connection.createDispatcher();
+        final Dispatcher dispatcher = conn.createDispatcher();
         context().executeBlocking(event -> {
             try {
-                jetStream.subscribe(subject, queue, dispatcher, handlerWrapper::handle, autoAck, so);
+                js.subscribe(subject, queue, dispatcher, handlerWrapper::handle, autoAck, so);
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
@@ -240,7 +215,7 @@ public class NatsStreamImpl implements NatsStream {
         final Promise<SubscriptionReadStream> promise = context().promise();
         context().executeBlocking(evt -> {
             try {
-                final JetStreamSubscription subscription = so != null ? jetStream.subscribe(subject, so) : jetStream.subscribe(subject);
+                final JetStreamSubscription subscription = so != null ? js.subscribe(subject, so) : js.subscribe(subject);
 
                 final SubscriptionReadStream subscriptionReadStream = new SubscriptionReadStreamImpl(context(), subscription, exceptionHandler);
                 subscriptionMap.put(subject, subscription);
@@ -321,7 +296,7 @@ public class NatsStreamImpl implements NatsStream {
                     }
                 } else {
                     dispatcherMap.remove(subject);
-                    connection.closeDispatcher(dispatcher);
+                    conn.closeDispatcher(dispatcher);
                     promise.complete();
                 }
             } catch (Exception e) {
@@ -329,11 +304,5 @@ public class NatsStreamImpl implements NatsStream {
             }
         }, false);
         return promise.future();
-    }
-
-
-    private void handleException(Promise<?> promise, Exception e) {
-        promise.fail(e);
-        exceptionHandler.get().handle(e);
     }
 }

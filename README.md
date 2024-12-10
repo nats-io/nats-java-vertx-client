@@ -46,7 +46,7 @@ and any optional configuration options. Here is an example:
 ```java
         // Set options
         final NatsOptions natsOptions = new NatsOptions();
-        natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port});
+        natsOptions.getNatsBuilder().server("localhost:" + port);
 
         // Create client
         final NatsClient natsClient = NatsClient.create(natsOptions);

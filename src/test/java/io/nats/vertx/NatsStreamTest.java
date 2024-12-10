@@ -1,5 +1,6 @@
 package io.nats.vertx;
 
+import io.nats.NatsServerRunner;
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
@@ -8,7 +9,6 @@ import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

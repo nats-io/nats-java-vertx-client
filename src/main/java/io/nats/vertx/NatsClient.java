@@ -4,7 +4,9 @@ package io.nats.vertx;
 import io.nats.client.*;
 import io.nats.client.impl.Headers;
 import io.nats.vertx.impl.NatsClientImpl;
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.streams.WriteStream;
 
 import java.time.Duration;
@@ -41,6 +43,21 @@ public interface NatsClient extends WriteStream<Message> {
      * @return JetStream interface that implements Vert.x Write Stream.
      */
     Future<NatsStream> jetStream(JetStreamOptions options);
+
+    /**
+     * Get interface to Key Value.
+     * @param bucketName the bucket name
+     * @return Key Value instance
+     */
+    Future<NatsKeyValue> keyValue(String bucketName);
+
+    /**
+     * Get interface to Key Value.
+     * @param bucketName the bucket name
+     * @param options KeyValue options.
+     * @return Key Value instance
+     */
+    Future<NatsKeyValue> keyValue(String bucketName, KeyValueOptions options);
 
     /**
      * Drain handler.
@@ -137,9 +154,6 @@ public interface NatsClient extends WriteStream<Message> {
      */
     Future<Message> request(String subject, byte[] message);
 
-
-
-
     /**
      * Send a request. The returned future will be completed when the
      * response comes back.
@@ -150,7 +164,6 @@ public interface NatsClient extends WriteStream<Message> {
      * @return a Future for the response, which may be cancelled on error or timed out
      */
     Future<Message> request(String subject, Headers headers, byte[] body);
-
 
     /**
      * Send a request. The returned future will be completed when the
@@ -163,7 +176,6 @@ public interface NatsClient extends WriteStream<Message> {
      * @return a Future for the response, which may be cancelled on error or timed out
      */
     Future<Message> requestWithTimeout(String subject, Headers headers, byte[] body, Duration timeout);
-
 
     /**
      *
@@ -198,7 +210,6 @@ public interface NatsClient extends WriteStream<Message> {
      * @return future to know results of the request operation.
      */
     Future<Message> request(String subject, byte[] message, Duration timeout);
-
 
     /**
      * Send a message to the specified subject. The message body <strong>will
@@ -259,7 +270,6 @@ public interface NatsClient extends WriteStream<Message> {
      */
     Future<Void> subscribe(String subject, Handler<Message> handler);
 
-
     /**
      *
      * Subscribe to subject.
@@ -290,6 +300,4 @@ public interface NatsClient extends WriteStream<Message> {
     default Future<Void> end() {
         return close();
     }
-
-
 }

@@ -1,11 +1,11 @@
 package io.nats.vertx;
 
+import io.nats.NatsServerRunner;
 import io.nats.client.*;
 import io.nats.client.support.Status;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import nats.io.NatsServerRunner;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
@@ -100,7 +100,7 @@ public class TestUtils {
 
     public static NatsServerRunner startServer() throws Exception {
         NatsServerRunner.setDefaultOutputLevel(Level.WARNING);
-        NatsServerRunner natsServerRunner = new NatsServerRunner(0, false, true);
+        NatsServerRunner natsServerRunner = new NatsServerRunner(-1, false, true);
 
         int port = natsServerRunner.getPort();
         for (int i = 0; i < 100; i++) {

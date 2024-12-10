@@ -172,7 +172,6 @@ public interface NatsStream extends WriteStream<Message> {
      */
     Future<PublishAck> publish(String subject, Headers headers, byte[] body, PublishOptions options);
 
-
     /**
      * Retrieve a message from the subscription.
      * @param subject subject The subject for the subscription.
@@ -223,5 +222,4 @@ public interface NatsStream extends WriteStream<Message> {
     default Future<Iterator<NatsVertxMessage>> iterate(final String subject, final int batchSize, final Duration maxWait) {
         return iterate(subject, batchSize, maxWait.toMillis());
     }
-
 }

@@ -1,12 +1,12 @@
 package io.nats.vertx;
 
+import io.nats.NatsServerRunner;
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import nats.io.NatsServerRunner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ public class NatsSimplePerfTest {
 
 
         Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                .servers(new String[]{"localhost:" + port});
+                .server("localhost:" + port);
         nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
         StreamInfo streamInfo = null;
@@ -202,7 +202,7 @@ public class NatsSimplePerfTest {
         final NatsOptions natsOptions = new NatsOptions();
         natsOptions.setVertx(Vertx.vertx());
         natsOptions.setNatsBuilder(new Options.Builder());
-        natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port}).connectionListener(new ConnectionListener() {
+        natsOptions.getNatsBuilder().server("localhost:" + port).connectionListener(new ConnectionListener() {
             @Override
             public void connectionEvent(Connection conn, Events type) {
                 System.out.println("Connection EVENT " + type);

@@ -4,6 +4,7 @@ import io.nats.client.*;
 import io.nats.client.impl.Headers;
 import io.nats.client.impl.VertxDispatcherFactory;
 import io.nats.vertx.NatsClient;
+import io.nats.vertx.NatsKeyValue;
 import io.nats.vertx.NatsOptions;
 import io.nats.vertx.NatsStream;
 import io.vertx.core.*;
@@ -137,33 +138,40 @@ public class NatsClientImpl implements NatsClient {
      */
     @Override
     public Future<NatsStream> jetStream() {
-        final Promise<NatsStream> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-
-                final JetStream jetStream = connection.get().jetStream();
-                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), vertx, exceptionHandler.get()));
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-
-        }, false);
-        return promise.future();
+        return jetStream(null);
     }
 
     /**
      * Return new JetStream stream instance.
-     * @param options JetStream options.
+     * @param jso JetStream options.
      * @return JetStream.
      */
     @Override
-    public Future<NatsStream> jetStream(final JetStreamOptions options) {
+    public Future<NatsStream> jetStream(final JetStreamOptions jso) {
         final Promise<NatsStream> promise = context().promise();
 
         context().executeBlocking(event -> {
             try {
-                final JetStream jetStream = connection.get().jetStream(options);
-                promise.complete(new NatsStreamImpl(jetStream, this.connection.get(), vertx, exceptionHandler.get()));
+                promise.complete(new NatsStreamImpl(connection.get(), vertx, exceptionHandler.get(), jso));
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
+    }
+
+    @Override
+    public Future<NatsKeyValue> keyValue(String bucketName) {
+        return keyValue(bucketName, null);
+    }
+
+    @Override
+    public Future<NatsKeyValue> keyValue(String bucketName, KeyValueOptions kvo) {
+        final Promise<NatsKeyValue> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                promise.complete(
+                    new NatsKeyValueImpl(connection.get(), vertx, exceptionHandler.get(), bucketName, kvo));
             } catch (Exception e) {
                 handleException(promise, e);
             }
@@ -273,7 +281,6 @@ public class NatsClientImpl implements NatsClient {
     public Future<Void> publish(String subject, String replyTo, String message) {
         return this.publish(subject, replyTo, message.getBytes(StandardCharsets.UTF_8));
     }
-
 
     @Override
     public Future<Void> publish(String subject, String replyTo, byte[] message) {
