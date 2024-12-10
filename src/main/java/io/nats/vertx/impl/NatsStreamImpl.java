@@ -3,6 +3,7 @@ package io.nats.vertx.impl;
 import io.nats.client.*;
 import io.nats.client.api.PublishAck;
 import io.nats.client.impl.Headers;
+import io.nats.client.support.Debug;
 import io.nats.vertx.NatsStream;
 import io.nats.vertx.NatsVertxMessage;
 import io.nats.vertx.SubscriptionReadStream;
@@ -176,6 +177,11 @@ public class NatsStreamImpl extends NatsImpl implements NatsStream {
     }
 
     @Override
+    public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck) {
+        return subscribe(subject, handler, autoAck, null);
+    }
+
+    @Override
     public Future<Void> subscribe(String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so) {
         final Promise<Void> promise = context().promise();
         final Handler<Message> handlerWrapper = event -> handler.handle(new NatsVertxMessageImpl(event, context()));
@@ -186,6 +192,7 @@ public class NatsStreamImpl extends NatsImpl implements NatsStream {
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
+                Debug.info("subscribe", e);
                 handleException(promise, e);
             }
         }, false);
@@ -216,7 +223,6 @@ public class NatsStreamImpl extends NatsImpl implements NatsStream {
         context().executeBlocking(evt -> {
             try {
                 final JetStreamSubscription subscription = so != null ? js.subscribe(subject, so) : js.subscribe(subject);
-
                 final SubscriptionReadStream subscriptionReadStream = new SubscriptionReadStreamImpl(context(), subscription, exceptionHandler);
                 subscriptionMap.put(subject, subscription);
                 promise.complete(subscriptionReadStream);

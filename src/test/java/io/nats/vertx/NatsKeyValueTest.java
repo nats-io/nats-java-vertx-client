@@ -5,26 +5,70 @@ import io.nats.client.api.*;
 import io.nats.client.impl.NatsKeyValueWatchSubscription;
 import io.nats.client.support.NatsKeyValueUtil;
 import io.vertx.core.Future;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static io.nats.client.api.KeyValueWatchOption.*;
-import static io.nats.vertx.TestUtils2.*;
+import static io.nats.vertx.TestUtils2.sleep;
+import static io.nats.vertx.TestUtils2.unique;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class NatsKeyValueTest {
-    public static final String META_KEY   = "meta-test-key";
-    public static final String META_VALUE = "meta-test-value";
+
+    // ----------------------------------------------------------------------------------------------------
+    // Test Running
+    // ----------------------------------------------------------------------------------------------------
+    static TestsRunner testRunner;
+    static int port;
+
+    @AfterAll
+    public static void afterAll() throws Exception {
+        testRunner.close();
+    }
+
+    @BeforeAll
+    public static void beforeAll() throws Exception {
+        testRunner = TestsRunner.instance();
+        port = testRunner.natsServerRunner.getPort();
+    }
+
+    @BeforeEach
+    public void beforeEach() throws Exception {
+        cleanupJs();
+    }
+
+    private static void cleanupJs() {
+        try {
+            JetStreamManagement jsm = testRunner.nc.jetStreamManagement();
+            List<String> streams = jsm.getStreamNames();
+            for (String s : streams)
+            {
+                jsm.deleteStream(s);
+            }
+        } catch (Exception ignore) {}
+    }
+
+    private static NatsClient getNatsClient() {
+        return TestUtils2.natsClient(port);
+    }
+
+    // ----------------------------------------------------------------------------------------------------
 
     @Test
     public void testWorkflow() throws Exception {
@@ -39,14 +83,9 @@ public class NatsKeyValueTest {
         String stringValue1 = "String Value 1";
         String stringValue2 = "String Value 2";
 
-        // get the kv management context
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put(META_KEY, META_VALUE);
-
-        // create the bucket
         String desc = "desc" + unique();
         KvProxy proxy = new KvProxy(b ->
-            b.description(desc).maxHistoryPerKey(3).metadata(metadata));
+            b.description(desc).maxHistoryPerKey(3));
 
         assertInitialStatus(proxy.status, proxy.bucket, desc);
 
@@ -951,47 +990,8 @@ public class NatsKeyValueTest {
     }
 
     // ----------------------------------------------------------------------------------------------------
-    // UTILITIES
+    // Kv Proxy - Used to un-async calls since the tests are based on strict ordering of things
     // ----------------------------------------------------------------------------------------------------
-    static TestsRunner testRunner;
-    static int port;
-
-    @AfterAll
-    public static void afterAll() throws Exception {
-        testRunner.close();
-    }
-
-    @BeforeAll
-    public static void beforeAll() throws Exception {
-        testRunner = TestUtils2.startServer();
-        port = testRunner.natsServerRunner.getPort();
-    }
-
-    @BeforeEach
-    public void beforeEach() throws Exception {
-        cleanupJs();
-    }
-
-    @AfterEach
-    public void afterEach() throws Exception {
-        cleanupJs();
-    }
-
-    private static void cleanupJs() {
-        try {
-            JetStreamManagement jsm = testRunner.nc.jetStreamManagement();
-            List<String> streams = jsm.getStreamNames();
-            for (String s : streams)
-            {
-                jsm.deleteStream(s);
-            }
-        } catch (Exception ignore) {}
-    }
-
-    private static NatsClient getNatsClient() {
-        return TestUtils2.natsClient(port);
-    }
-
     static class KvProxy {
         final KeyValueManagement kvm;
         final String bucket;
