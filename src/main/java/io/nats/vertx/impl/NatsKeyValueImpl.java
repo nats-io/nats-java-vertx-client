@@ -6,7 +6,6 @@ import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsKeyValueWatchSubscription;
 import io.nats.client.impl.NatsMessage;
 import io.nats.client.support.DateTimeUtils;
-import io.nats.client.support.Debug;
 import io.nats.client.support.Validator;
 import io.nats.vertx.NatsKeyValue;
 import io.vertx.core.Future;
@@ -34,7 +33,7 @@ public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
 
     // JNats KeyValue parallel variables
     private final String bucketName;
-    private String streamName;
+    private final String streamName;
     private final String streamSubject;
     private final String readPrefix;
     private final String writePrefix;
@@ -146,7 +145,6 @@ public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
                     promise.fail(e);
                 }
             } catch (Exception e) {
-                Debug.info("CR EX", e);
                 handleException(promise, e);
             }
         }, false);
