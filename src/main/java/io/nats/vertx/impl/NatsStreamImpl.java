@@ -3,7 +3,6 @@ package io.nats.vertx.impl;
 import io.nats.client.*;
 import io.nats.client.api.PublishAck;
 import io.nats.client.impl.Headers;
-import io.nats.client.support.Debug;
 import io.nats.vertx.NatsStream;
 import io.nats.vertx.NatsVertxMessage;
 import io.nats.vertx.SubscriptionReadStream;
@@ -192,7 +191,6 @@ public class NatsStreamImpl extends NatsImpl implements NatsStream {
                 dispatcherMap.put(subject, dispatcher);
                 promise.complete();
             } catch (Exception e) {
-                Debug.info("subscribe", e);
                 handleException(promise, e);
             }
         }, false);
