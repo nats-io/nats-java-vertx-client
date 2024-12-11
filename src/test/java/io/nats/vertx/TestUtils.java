@@ -100,7 +100,7 @@ public class TestUtils {
 
     public static NatsServerRunner startServer() throws Exception {
         NatsServerRunner.setDefaultOutputLevel(Level.WARNING);
-        NatsServerRunner natsServerRunner = new NatsServerRunner(-1, false, true);
+        NatsServerRunner natsServerRunner = NatsServerRunner.builder().jetstream().build();
 
         int port = natsServerRunner.getPort();
         for (int i = 0; i < 100; i++) {

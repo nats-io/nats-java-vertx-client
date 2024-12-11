@@ -40,7 +40,7 @@ public class NatsSimplePerfTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        natsServerRunner = new NatsServerRunner(0, false, true);
+        natsServerRunner = NatsServerRunner.builder().jetstream().build();
         Thread.sleep(1);
 
 

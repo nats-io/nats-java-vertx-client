@@ -34,11 +34,18 @@ public class NatsStreamTest {
 
     @AfterEach
     public void after() throws Exception {
-        if (nc != null)
-            nc.close();
-
-        if (natsServerRunner != null)
-            natsServerRunner.close();
+        try {
+            if (nc != null) {
+                nc.close();
+            }
+        }
+        catch (Exception ignore) {}
+        try {
+            if (natsServerRunner != null) {
+                natsServerRunner.close();
+            }
+        }
+        catch (Exception ignore) {}
     }
 
     int port;
