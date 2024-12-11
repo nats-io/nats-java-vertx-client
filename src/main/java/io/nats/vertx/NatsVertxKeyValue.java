@@ -2,6 +2,7 @@ package io.nats.vertx;
 
 import io.nats.client.api.*;
 import io.nats.client.impl.NatsKeyValueWatchSubscription;
+import io.nats.vertx.impl.NatsImpl;
 import io.vertx.core.Future;
 import io.vertx.core.streams.StreamBase;
 
@@ -10,7 +11,7 @@ import java.util.List;
 /**
  * Provides a Vert.x WriteStream interface with Futures and Promises.
  */
-public interface NatsKeyValue extends StreamBase {
+public interface NatsVertxKeyValue extends StreamBase {
 
     /**
      * Get the name of the bucket.
@@ -127,7 +128,7 @@ public interface NatsKeyValue extends StreamBase {
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
      */
-    NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
+    Future<NatsKeyValueWatchSubscription> watch(String key, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
 
     /**
      * Watch updates for a specific key, starting at a specific revision.
@@ -137,7 +138,7 @@ public interface NatsKeyValue extends StreamBase {
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
      */
-    NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
+    Future<NatsKeyValueWatchSubscription> watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
 
     /**
      * Watch updates for specific keys.
@@ -146,7 +147,7 @@ public interface NatsKeyValue extends StreamBase {
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
      */
-    NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
+    Future<NatsKeyValueWatchSubscription> watch(List<String> keys, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
 
     /**
      * Watch updates for specific keys, starting at a specific revision.
@@ -156,7 +157,7 @@ public interface NatsKeyValue extends StreamBase {
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
      */
-    NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
+    Future<NatsKeyValueWatchSubscription> watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
 
     /**
      * Watch updates for all keys.
@@ -164,7 +165,7 @@ public interface NatsKeyValue extends StreamBase {
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
      */
-    NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
+    Future<NatsKeyValueWatchSubscription> watchAll(KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
 
     /**
      * Watch updates for all keys starting from a specific revision
@@ -173,7 +174,7 @@ public interface NatsKeyValue extends StreamBase {
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
      */
-    NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
+    Future<NatsKeyValueWatchSubscription> watchAll(KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
 
     /**
      * Get a list of the keys in a bucket.
@@ -221,4 +222,15 @@ public interface NatsKeyValue extends StreamBase {
      * @return the status object
      */
     Future<KeyValueStatus> getStatus();
+
+    /**
+     * Get access to the underlying implementation which contains
+     * the connection, the JetStream context, and other components
+     * @return the NatsImp object
+     */
+    NatsImpl getImpl();
+
+    String readSubject(String key);
+
+    String writeSubject(String key);
 }

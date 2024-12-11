@@ -4,9 +4,9 @@ import io.nats.client.*;
 import io.nats.client.impl.Headers;
 import io.nats.client.impl.VertxDispatcherFactory;
 import io.nats.vertx.NatsClient;
-import io.nats.vertx.NatsKeyValue;
 import io.nats.vertx.NatsOptions;
 import io.nats.vertx.NatsStream;
+import io.nats.vertx.NatsVertxKeyValue;
 import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.streams.WriteStream;
@@ -161,17 +161,17 @@ public class NatsClientImpl implements NatsClient {
     }
 
     @Override
-    public Future<NatsKeyValue> keyValue(String bucketName) {
+    public Future<NatsVertxKeyValue> keyValue(String bucketName) {
         return keyValue(bucketName, null);
     }
 
     @Override
-    public Future<NatsKeyValue> keyValue(String bucketName, KeyValueOptions kvo) {
-        final Promise<NatsKeyValue> promise = context().promise();
+    public Future<NatsVertxKeyValue> keyValue(String bucketName, KeyValueOptions kvo) {
+        final Promise<NatsVertxKeyValue> promise = context().promise();
         context().executeBlocking(event -> {
             try {
                 promise.complete(
-                    new NatsKeyValueImpl(connection.get(), vertx, exceptionHandler.get(), bucketName, kvo));
+                    new NatsVertxKeyValueImpl(connection.get(), vertx, exceptionHandler.get(), bucketName, kvo));
             } catch (Exception e) {
                 handleException(promise, e);
             }

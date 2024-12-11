@@ -49,7 +49,7 @@ public interface NatsClient extends WriteStream<Message> {
      * @param bucketName the bucket name
      * @return Key Value instance
      */
-    Future<NatsKeyValue> keyValue(String bucketName);
+    Future<NatsVertxKeyValue> keyValue(String bucketName);
 
     /**
      * Get interface to Key Value.
@@ -57,7 +57,7 @@ public interface NatsClient extends WriteStream<Message> {
      * @param options KeyValue options.
      * @return Key Value instance
      */
-    Future<NatsKeyValue> keyValue(String bucketName, KeyValueOptions options);
+    Future<NatsVertxKeyValue> keyValue(String bucketName, KeyValueOptions options);
 
     /**
      * Drain handler.

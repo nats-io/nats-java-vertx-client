@@ -22,16 +22,16 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class NatsImpl {
 
-    protected final Vertx vertx;
+    public final Vertx vertx;
 
     protected final ConcurrentHashMap<String, Dispatcher> dispatcherMap = new ConcurrentHashMap<>();
     protected final ConcurrentHashMap<String, JetStreamSubscription> subscriptionMap = new ConcurrentHashMap<>();
 
-    protected final Connection conn;
-    protected final Duration timeout;
-    protected final JetStreamOptions jso;
-    protected final JetStreamManagement jsm;
-    protected final JetStream js;
+    public final Connection conn;
+    public final Duration timeout;
+    public final JetStreamOptions jso;
+    public final JetStreamManagement jsm;
+    public final JetStream js;
 
     protected final AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>();
 
@@ -59,8 +59,8 @@ public class NatsImpl {
 
     }
 
-    protected ContextInternal context() {
-        return (ContextInternal)  vertx.getOrCreateContext();
+    public ContextInternal context() {
+        return (ContextInternal)vertx.getOrCreateContext();
     }
 
     protected void endImpl(Handler<AsyncResult<Void>> handler) {
@@ -69,7 +69,7 @@ public class NatsImpl {
         handler.handle(promise.future());
     }
 
-    protected void handleException(Promise<?> promise, Exception e) {
+    public void handleException(Promise<?> promise, Exception e) {
         promise.fail(e);
         exceptionHandler.get().handle(e);
     }

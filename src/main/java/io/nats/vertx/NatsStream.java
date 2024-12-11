@@ -82,7 +82,7 @@ public interface NatsStream extends WriteStream<Message> {
     /**
      * Subscribe to JetStream stream
      * @param subject The subject of the stream.
-     * @param queue The queue name to share messages accross consumers with the same queue name.
+     * @param queue The queue name to share messages across consumers with the same queue name.
      * @param handler The message handler to listen to messages from the stream.
      * @param autoAck Specify if message handler should auto acknowledge.
      * @param so The PushSubscribeOptions

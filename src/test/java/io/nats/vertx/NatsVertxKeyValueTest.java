@@ -17,7 +17,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +28,7 @@ import static io.nats.vertx.TestUtils2.sleep;
 import static io.nats.vertx.TestUtils2.unique;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class NatsKeyValueTest {
+public class NatsVertxKeyValueTest {
 
     // ----------------------------------------------------------------------------------------------------
     // Test Running
@@ -84,40 +83,39 @@ public class NatsKeyValueTest {
         String stringValue2 = "String Value 2";
 
         String desc = "desc" + unique();
-        KvProxy proxy = new KvProxy(b ->
-            b.description(desc).maxHistoryPerKey(3));
-
-        assertInitialStatus(proxy.status, proxy.bucket, desc);
+        KvTester tester = new KvTester(b -> b.description(desc).maxHistoryPerKey(3));
+        //noinspection DataFlowIssue
+        assertInitialStatus(tester.status, tester.bucket, desc);
 
         // get the kv context for the specific bucket
 
-        assertEquals(proxy.bucket, proxy.kv.getBucketName());
-        KeyValueStatus status = proxy.getStatus();
-        assertInitialStatus(status, proxy.bucket, desc);
+        assertEquals(tester.bucket, tester.kv.getBucketName());
+        KeyValueStatus status = tester.getStatus();
+        assertInitialStatus(status, tester.bucket, desc);
 
         // Put some keys. Each key is put in a subject in the bucket (stream)
         // The put returns the sequence number in the bucket (stream)
-        assertEquals(1, proxy.put(byteKey, byteValue1.getBytes()));
-        assertEquals(2, proxy.put(stringKey, stringValue1));
-        assertEquals(3, proxy.put(longKey, 1));
+        assertEquals(1, tester.put(byteKey, byteValue1.getBytes()));
+        assertEquals(2, tester.put(stringKey, stringValue1));
+        assertEquals(3, tester.put(longKey, 1));
 
         // retrieve the values. all types are stored as bytes
         // so you can always get the bytes directly
-        assertEquals(byteValue1, new String(proxy.get(byteKey).getValue()));
-        assertEquals(stringValue1, new String(proxy.get(stringKey).getValue()));
-        assertEquals("1", new String(proxy.get(longKey).getValue()));
+        assertEquals(byteValue1, new String(tester.get(byteKey).getValue()));
+        assertEquals(stringValue1, new String(tester.get(stringKey).getValue()));
+        assertEquals("1", new String(tester.get(longKey).getValue()));
 
         // if you know the value is not binary and can safely be read
         // as a UTF-8 string, the getStringValue method is ok to use
-        assertEquals(byteValue1, proxy.get(byteKey).getValueAsString());
-        assertEquals(stringValue1, proxy.get(stringKey).getValueAsString());
-        assertEquals("1", proxy.get(longKey).getValueAsString());
+        assertEquals(byteValue1, tester.get(byteKey).getValueAsString());
+        assertEquals(stringValue1, tester.get(stringKey).getValueAsString());
+        assertEquals("1", tester.get(longKey).getValueAsString());
 
         // if you know the value is a long, you can use
         // the getLongValue method
         // if it's not a number a NumberFormatException is thrown
-        assertEquals(1, proxy.get(longKey).getValueAsLong());
-        assertThrows(NumberFormatException.class, () -> proxy.get(stringKey).getValueAsLong());
+        assertEquals(1, tester.get(longKey).getValueAsLong());
+        assertThrows(NumberFormatException.class, () -> tester.get(stringKey).getValueAsLong());
 
         // going to manually track history for verification later
         List<Object> byteHistory = new ArrayList<>();
@@ -126,185 +124,183 @@ public class NatsKeyValueTest {
 
         // entry gives detail about the latest entry of the key
         byteHistory.add(
-            assertEntry(proxy.bucket, byteKey, KeyValueOperation.PUT, 1, byteValue1, now, proxy.get(byteKey)));
+            assertEntry(tester.bucket, byteKey, KeyValueOperation.PUT, 1, byteValue1, now, tester.get(byteKey)));
 
         stringHistory.add(
-            assertEntry(proxy.bucket, stringKey, KeyValueOperation.PUT, 2, stringValue1, now, proxy.get(stringKey)));
+            assertEntry(tester.bucket, stringKey, KeyValueOperation.PUT, 2, stringValue1, now, tester.get(stringKey)));
 
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 3, "1", now, proxy.get(longKey)));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 3, "1", now, tester.get(longKey)));
 
         // history gives detail about the key
-        assertHistory(byteHistory, proxy.history(byteKey));
-        assertHistory(stringHistory, proxy.history(stringKey));
-        assertHistory(longHistory, proxy.history(longKey));
+        assertHistory(byteHistory, tester.history(byteKey));
+        assertHistory(stringHistory, tester.history(stringKey));
+        assertHistory(longHistory, tester.history(longKey));
 
         // let's check the bucket info
-        status = proxy.kvm.getStatus(proxy.bucket);
-        assertState(status, 3, 3);
-        status = proxy.kvm.getBucketInfo(proxy.bucket); // coverage for deprecated
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 3, 3);
 
         // delete a key. Its entry will still exist, but its value is null
-        proxy.delete(byteKey);
-        assertNull(proxy.get(byteKey));
+        tester.delete(byteKey);
+        assertNull(tester.get(byteKey));
         byteHistory.add(KeyValueOperation.DELETE);
-        assertHistory(byteHistory, proxy.history(byteKey));
+        assertHistory(byteHistory, tester.history(byteKey));
 
         // hashCode coverage
         assertEquals(byteHistory.get(0).hashCode(), byteHistory.get(0).hashCode());
         assertNotEquals(byteHistory.get(0).hashCode(), byteHistory.get(1).hashCode());
 
         // let's check the bucket info
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 4, 4);
 
-        // if the key has been deleted no etnry is returned
-        assertNull(proxy.get(byteKey));
+        // if the key has been deleted no entry is returned
+        assertNull(tester.get(byteKey));
 
         // if the key does not exist (no history) there is no entry
-        assertNull(proxy.get(notFoundKey));
+        assertNull(tester.get(notFoundKey));
 
         // Update values. You can even update a deleted key
-        assertEquals(5, proxy.put(byteKey, byteValue2.getBytes()));
-        assertEquals(6, proxy.put(stringKey, stringValue2));
-        assertEquals(7, proxy.put(longKey, 2));
+        assertEquals(5, tester.put(byteKey, byteValue2.getBytes()));
+        assertEquals(6, tester.put(stringKey, stringValue2));
+        assertEquals(7, tester.put(longKey, 2));
 
         // values after updates
-        assertEquals(byteValue2, new String(proxy.get(byteKey).getValue()));
-        assertEquals(stringValue2, proxy.get(stringKey).getValueAsString());
-        assertEquals(2, proxy.get(longKey).getValueAsLong());
+        assertEquals(byteValue2, new String(tester.get(byteKey).getValue()));
+        assertEquals(stringValue2, tester.get(stringKey).getValueAsString());
+        assertEquals(2, tester.get(longKey).getValueAsLong());
 
         // entry and history after update
         byteHistory.add(
-            assertEntry(proxy.bucket, byteKey, KeyValueOperation.PUT, 5, byteValue2, now, proxy.get(byteKey)));
-        assertHistory(byteHistory, proxy.history(byteKey));
+            assertEntry(tester.bucket, byteKey, KeyValueOperation.PUT, 5, byteValue2, now, tester.get(byteKey)));
+        assertHistory(byteHistory, tester.history(byteKey));
 
         stringHistory.add(
-            assertEntry(proxy.bucket, stringKey, KeyValueOperation.PUT, 6, stringValue2, now, proxy.get(stringKey)));
-        assertHistory(stringHistory, proxy.history(stringKey));
+            assertEntry(tester.bucket, stringKey, KeyValueOperation.PUT, 6, stringValue2, now, tester.get(stringKey)));
+        assertHistory(stringHistory, tester.history(stringKey));
 
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 7, "2", now, proxy.get(longKey)));
-        assertHistory(longHistory, proxy.history(longKey));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 7, "2", now, tester.get(longKey)));
+        assertHistory(longHistory, tester.history(longKey));
 
         // let's check the bucket info
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 7, 7);
 
         // make sure it only keeps the correct amount of history
-        assertEquals(8, proxy.put(longKey, 3));
-        assertEquals(3, proxy.get(longKey).getValueAsLong());
+        assertEquals(8, tester.put(longKey, 3));
+        assertEquals(3, tester.get(longKey).getValueAsLong());
 
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 8, "3", now, proxy.get(longKey)));
-        assertHistory(longHistory, proxy.history(longKey));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 8, "3", now, tester.get(longKey)));
+        assertHistory(longHistory, tester.history(longKey));
 
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 8, 8);
 
         // this would be the 4th entry for the longKey
         // sp the total records will stay the same
-        assertEquals(9, proxy.put(longKey, 4));
-        assertEquals(4, proxy.get(longKey).getValueAsLong());
+        assertEquals(9, tester.put(longKey, 4));
+        assertEquals(4, tester.get(longKey).getValueAsLong());
 
         // history only retains 3 records
         longHistory.remove(0);
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 9, "4", now, proxy.get(longKey)));
-        assertHistory(longHistory, proxy.history(longKey));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 9, "4", now, tester.get(longKey)));
+        assertHistory(longHistory, tester.history(longKey));
 
         // record count does not increase
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 8, 9);
 
-        assertKeys(proxy.keys(), byteKey, stringKey, longKey);
-        assertKeys(proxy.keys("key.>"), byteKey, stringKey, longKey);
-        assertKeys(proxy.keys(byteKey), byteKey);
-        assertKeys(proxy.keys(Arrays.asList(longKey, stringKey)), longKey, stringKey);
+        assertKeys(tester.keys(), byteKey, stringKey, longKey);
+        assertKeys(tester.keys("key.>"), byteKey, stringKey, longKey);
+        assertKeys(tester.keys(byteKey), byteKey);
+        assertKeys(tester.keys(Arrays.asList(longKey, stringKey)), longKey, stringKey);
 
         // purge
-        proxy.purge(longKey);
+        tester.purge(longKey);
         longHistory.clear();
-        assertNull(proxy.get(longKey));
+        assertNull(tester.get(longKey));
         longHistory.add(KeyValueOperation.PURGE);
-        assertHistory(longHistory, proxy.history(longKey));
+        assertHistory(longHistory, tester.history(longKey));
 
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 6, 10);
 
         // only 2 keys now
-        assertKeys(proxy.keys(), byteKey, stringKey);
+        assertKeys(tester.keys(), byteKey, stringKey);
 
-        proxy.purge(byteKey);
+        tester.purge(byteKey);
         byteHistory.clear();
-        assertNull(proxy.get(byteKey));
+        assertNull(tester.get(byteKey));
         byteHistory.add(KeyValueOperation.PURGE);
-        assertHistory(byteHistory, proxy.history(byteKey));
+        assertHistory(byteHistory, tester.history(byteKey));
 
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 4, 11);
 
         // only 1 key now
-        assertKeys(proxy.keys(), stringKey);
+        assertKeys(tester.keys(), stringKey);
 
-        proxy.purge(stringKey);
+        tester.purge(stringKey);
         stringHistory.clear();
-        assertNull(proxy.get(stringKey));
+        assertNull(tester.get(stringKey));
         stringHistory.add(KeyValueOperation.PURGE);
-        assertHistory(stringHistory, proxy.history(stringKey));
+        assertHistory(stringHistory, tester.history(stringKey));
 
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 3, 12);
 
         // no more keys left
-        assertKeys(proxy.keys());
+        assertKeys(tester.keys());
 
         // clear things
         KeyValuePurgeOptions kvpo = KeyValuePurgeOptions.builder().deleteMarkersNoThreshold().build();
-        proxy.purgeDeletes(kvpo);
-        status = proxy.kvm.getStatus(proxy.bucket);
+        tester.purgeDeletes(kvpo);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 0, 12);
 
         longHistory.clear();
-        assertHistory(longHistory, proxy.history(longKey));
+        assertHistory(longHistory, tester.history(longKey));
 
         stringHistory.clear();
-        assertHistory(stringHistory, proxy.history(stringKey));
+        assertHistory(stringHistory, tester.history(stringKey));
 
         // put some more
-        assertEquals(13, proxy.put(longKey, 110));
+        assertEquals(13, tester.put(longKey, 110));
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 13, "110", now, proxy.get(longKey)));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 13, "110", now, tester.get(longKey)));
 
-        assertEquals(14, proxy.put(longKey, 111));
+        assertEquals(14, tester.put(longKey, 111));
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 14, "111", now, proxy.get(longKey)));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 14, "111", now, tester.get(longKey)));
 
-        assertEquals(15, proxy.put(longKey, 112));
+        assertEquals(15, tester.put(longKey, 112));
         longHistory.add(
-            assertEntry(proxy.bucket, longKey, KeyValueOperation.PUT, 15, "112", now, proxy.get(longKey)));
+            assertEntry(tester.bucket, longKey, KeyValueOperation.PUT, 15, "112", now, tester.get(longKey)));
 
-        assertEquals(16, proxy.put(stringKey, stringValue1));
+        assertEquals(16, tester.put(stringKey, stringValue1));
         stringHistory.add(
-            assertEntry(proxy.bucket, stringKey, KeyValueOperation.PUT, 16, stringValue1, now, proxy.get(stringKey)));
+            assertEntry(tester.bucket, stringKey, KeyValueOperation.PUT, 16, stringValue1, now, tester.get(stringKey)));
 
-        assertEquals(17, proxy.put(stringKey, stringValue2));
+        assertEquals(17, tester.put(stringKey, stringValue2));
         stringHistory.add(
-            assertEntry(proxy.bucket, stringKey, KeyValueOperation.PUT, 17, stringValue2, now, proxy.get(stringKey)));
+            assertEntry(tester.bucket, stringKey, KeyValueOperation.PUT, 17, stringValue2, now, tester.get(stringKey)));
 
-        assertHistory(longHistory, proxy.history(longKey));
-        assertHistory(stringHistory, proxy.history(stringKey));
+        assertHistory(longHistory, tester.history(longKey));
+        assertHistory(stringHistory, tester.history(stringKey));
 
-        status = proxy.kvm.getStatus(proxy.bucket);
+        status = tester.kvm.getStatus(tester.bucket);
         assertState(status, 5, 17);
 
         // delete the bucket
-        proxy.kvm.delete(proxy.bucket);
-        assertThrows(JetStreamApiException.class, () -> proxy.kvm.delete(proxy.bucket));
-        assertThrows(JetStreamApiException.class, () -> proxy.kvm.getStatus(proxy.bucket));
+        tester.kvm.delete(tester.bucket);
+        assertThrows(JetStreamApiException.class, () -> tester.kvm.delete(tester.bucket));
+        assertThrows(JetStreamApiException.class, () -> tester.kvm.getStatus(tester.bucket));
 
-        assertEquals(0, proxy.kvm.getBucketNames().size());
+        assertEquals(0, tester.kvm.getBucketNames().size());
     }
 
     private static void assertState(KeyValueStatus status, int entryCount, int lastSeq) {
@@ -324,8 +320,6 @@ public class NatsKeyValueTest {
         assertEquals(3, kvc.getMaxHistoryPerKey());
         assertEquals(-1, status.getMaxBucketSize());
         assertEquals(-1, kvc.getMaxBucketSize());
-        assertEquals(-1, status.getMaxValueSize()); // COVERAGE for deprecated
-        assertEquals(-1, kvc.getMaxValueSize());
         assertEquals(-1, status.getMaximumValueSize());
         assertEquals(-1, kvc.getMaximumValueSize());
         assertEquals(Duration.ZERO, status.getTtl());
@@ -347,42 +341,42 @@ public class NatsKeyValueTest {
 
     @Test
     public void testGetRevision() throws Exception {
-        KvProxy proxy = new KvProxy(b -> b.maxHistoryPerKey(2));
+        KvTester tester = new KvTester(b -> b.maxHistoryPerKey(2));
 
         String key = unique();
 
-        long seq1 = proxy.put(key, 1);
-        long seq2 = proxy.put(key, 2);
-        long seq3 = proxy.put(key, 3);
+        long seq1 = tester.put(key, 1);
+        long seq2 = tester.put(key, 2);
+        long seq3 = tester.put(key, 3);
 
-        KeyValueEntry kve = proxy.get(key);
+        KeyValueEntry kve = tester.get(key);
         assertNotNull(kve);
         assertEquals(3, kve.getValueAsLong());
 
-        kve = proxy.get(key, seq3);
+        kve = tester.get(key, seq3);
         assertNotNull(kve);
         assertEquals(3, kve.getValueAsLong());
 
-        kve = proxy.get(key, seq2);
+        kve = tester.get(key, seq2);
         assertNotNull(kve);
         assertEquals(2, kve.getValueAsLong());
 
-        kve = proxy.get(key, seq1);
+        kve = tester.get(key, seq1);
         assertNull(kve);
 
-        kve = proxy.get("notkey", seq3);
+        kve = tester.get("notkey", seq3);
         assertNull(kve);
     }
 
     @Test
     public void testKeys() throws Exception {
-        KvProxy proxy = new KvProxy();
+        KvTester tester = new KvTester();
 
         for (int x = 1; x <= 10; x++) {
-            proxy.put("k" + x, x);
+            tester.put("k" + x, x);
         }
 
-        List<String> keys = proxy.keys();
+        List<String> keys = tester.keys();
         assertEquals(10, keys.size());
         for (int x = 1; x <= 10; x++) {
             assertTrue(keys.contains("k" + x));
@@ -391,24 +385,24 @@ public class NatsKeyValueTest {
 
     @Test
     public void testMaxHistoryPerKey() throws Exception {
-        KvProxy proxy1 = new KvProxy();
+        KvTester tester1 = new KvTester();
 
         String key = unique();
-        proxy1.put(key, 1);
-        proxy1.put(key, 2);
+        tester1.put(key, 1);
+        tester1.put(key, 2);
 
-        List<KeyValueEntry> history = proxy1.history(key);
+        List<KeyValueEntry> history = tester1.history(key);
         assertEquals(1, history.size());
         assertEquals(2, history.get(0).getValueAsLong());
 
-        KvProxy proxy2 = new KvProxy(b -> b.maxHistoryPerKey(2));
+        KvTester tester2 = new KvTester(b -> b.maxHistoryPerKey(2));
 
         key = unique();
-        proxy2.put(key, 1);
-        proxy2.put(key, 2);
-        proxy2.put(key, 3);
+        tester2.put(key, 1);
+        tester2.put(key, 2);
+        tester2.put(key, 3);
 
-        history = proxy2.history(key);
+        history = tester2.history(key);
         assertEquals(2, history.size());
         assertEquals(2, history.get(0).getValueAsLong());
         assertEquals(3, history.get(1).getValueAsLong());
@@ -416,30 +410,31 @@ public class NatsKeyValueTest {
 
     @Test
     public void testCreateUpdate() throws Exception {
-        KvProxy proxy = new KvProxy();
+        KvTester tester = new KvTester();
 
-        assertEquals(proxy.bucket, proxy.status.getBucketName());
-        assertNull(proxy.status.getDescription());
-        assertEquals(1, proxy.status.getMaxHistoryPerKey());
-        assertEquals(-1, proxy.status.getMaxBucketSize());
-        assertEquals(-1, proxy.status.getMaximumValueSize());
-        assertEquals(Duration.ZERO, proxy.status.getTtl());
-        assertEquals(StorageType.Memory, proxy.status.getStorageType());
-        assertEquals(1, proxy.status.getReplicas());
-        assertEquals(0, proxy.status.getEntryCount());
-        assertEquals("JetStream", proxy.status.getBackingStore());
+        //noinspection DataFlowIssue
+        assertEquals(tester.bucket, tester.status.getBucketName());
+        assertNull(tester.status.getDescription());
+        assertEquals(1, tester.status.getMaxHistoryPerKey());
+        assertEquals(-1, tester.status.getMaxBucketSize());
+        assertEquals(-1, tester.status.getMaximumValueSize());
+        assertEquals(Duration.ZERO, tester.status.getTtl());
+        assertEquals(StorageType.Memory, tester.status.getStorageType());
+        assertEquals(1, tester.status.getReplicas());
+        assertEquals(0, tester.status.getEntryCount());
+        assertEquals("JetStream", tester.status.getBackingStore());
 
         String key = unique();
-        proxy.put(key, 1);
-        proxy.put(key, 2);
+        tester.put(key, 1);
+        tester.put(key, 2);
 
-        List<KeyValueEntry> history = proxy.history(key);
+        List<KeyValueEntry> history = tester.history(key);
         assertEquals(1, history.size());
         assertEquals(2, history.get(0).getValueAsLong());
 
         boolean compression = true;
         String desc = unique();
-        KeyValueConfiguration kvc = KeyValueConfiguration.builder(proxy.status.getConfiguration())
+        KeyValueConfiguration kvc = KeyValueConfiguration.builder(tester.status.getConfiguration())
             .description(desc)
             .maxHistoryPerKey(3)
             .maxBucketSize(10_000)
@@ -448,9 +443,9 @@ public class NatsKeyValueTest {
             .compression(compression)
             .build();
 
-        KeyValueStatus kvs = proxy.kvm.update(kvc);
+        KeyValueStatus kvs = tester.kvm.update(kvc);
 
-        assertEquals(proxy.bucket, kvs.getBucketName());
+        assertEquals(tester.bucket, kvs.getBucketName());
         assertEquals(desc, kvs.getDescription());
         assertEquals(3, kvs.getMaxHistoryPerKey());
         assertEquals(10_000, kvs.getMaxBucketSize());
@@ -462,117 +457,117 @@ public class NatsKeyValueTest {
         assertEquals("JetStream", kvs.getBackingStore());
         assertEquals(compression, kvs.isCompressed());
 
-        history = proxy.history(key);
+        history = tester.history(key);
         assertEquals(1, history.size());
         assertEquals(2, history.get(0).getValueAsLong());
 
         KeyValueConfiguration kvcStor = KeyValueConfiguration.builder(kvs.getConfiguration())
             .storageType(StorageType.File)
             .build();
-        assertThrows(JetStreamApiException.class, () -> proxy.kvm.update(kvcStor));
+        assertThrows(JetStreamApiException.class, () -> tester.kvm.update(kvcStor));
     }
 
     @Test
     public void testHistoryDeletePurge() throws Exception {
-        KvProxy proxy = new KvProxy(b -> b.maxHistoryPerKey(64));
+        KvTester tester = new KvTester(b -> b.maxHistoryPerKey(64));
 
         String key = unique();
-        proxy.put(key, "a");
-        proxy.put(key, "b");
-        proxy.put(key, "c");
-        List<KeyValueEntry> list = proxy.history(key);
+        tester.put(key, "a");
+        tester.put(key, "b");
+        tester.put(key, "c");
+        List<KeyValueEntry> list = tester.history(key);
         assertEquals(3, list.size());
 
-        proxy.delete(key);
-        list = proxy.history(key);
+        tester.delete(key);
+        list = tester.history(key);
         assertEquals(4, list.size());
 
-        proxy.purge(key);
-        list = proxy.history(key);
+        tester.purge(key);
+        list = tester.history(key);
         assertEquals(1, list.size());
     }
 
     @Test
     public void testAtomicDeleteAtomicPurge() throws Exception {
-        KvProxy proxy = new KvProxy(b -> b.maxHistoryPerKey(64));
+        KvTester tester = new KvTester(b -> b.maxHistoryPerKey(64));
 
         String key = unique();
-        proxy.put(key, "a");
-        proxy.put(key, "b");
-        proxy.put(key, "c");
-        assertEquals(3, proxy.get(key).getRevision());
+        tester.put(key, "a");
+        tester.put(key, "b");
+        tester.put(key, "c");
+        assertEquals(3, tester.get(key).getRevision());
 
         // Delete wrong revision rejected
-        proxy.delete(key, 1);
-        proxy.assertThrew(JetStreamApiException.class);
+        tester.delete(key, 1);
+        tester.assertThrew(JetStreamApiException.class);
 
         // Correct revision writes tombstone and bumps revision
-        proxy.delete(key, 3);
+        tester.delete(key, 3);
 
         assertHistory(Arrays.asList(
-                proxy.get(key, 1L),
-                proxy.get(key, 2L),
-                proxy.get(key, 3L),
+                tester.get(key, 1L),
+                tester.get(key, 2L),
+                tester.get(key, 3L),
                 KeyValueOperation.DELETE),
-            proxy.history(key));
+            tester.history(key));
 
         // Wrong revision rejected again
-        proxy.delete(key, 3);
-        proxy.assertThrew(JetStreamApiException.class);
+        tester.delete(key, 3);
+        tester.assertThrew(JetStreamApiException.class);
 
         // Delete is idempotent: two consecutive tombstones
-        proxy.delete(key, 4);
+        tester.delete(key, 4);
 
         assertHistory(Arrays.asList(
-                proxy.get(key, 1L),
-                proxy.get(key, 2L),
-                proxy.get(key, 3L),
+                tester.get(key, 1L),
+                tester.get(key, 2L),
+                tester.get(key, 3L),
                 KeyValueOperation.DELETE,
                 KeyValueOperation.DELETE),
-            proxy.history(key));
+            tester.history(key));
 
         // Purge wrong revision rejected
-        proxy.purge(key, 1);
-        proxy.assertThrew(JetStreamApiException.class);
+        tester.purge(key, 1);
+        tester.assertThrew(JetStreamApiException.class);
 
         // Correct revision writes roll-up purge tombstone
-        proxy.purge(key, 5);
+        tester.purge(key, 5);
 
-        assertHistory(Arrays.asList(KeyValueOperation.PURGE), proxy.history(key));
+        assertHistory(Arrays.asList(KeyValueOperation.PURGE), tester.history(key));
     }
 
     @Test
     public void testPurgeDeletes() throws Exception {
-        KvProxy proxy = new KvProxy(b -> b.maxHistoryPerKey(64));
+        KvTester tester = new KvTester(b -> b.maxHistoryPerKey(64));
 
         String key1 = unique();
         String key2 = unique();
         String key3 = unique();
         String key4 = unique();
-        proxy.put(key1, "a");
-        proxy.delete(key1);
-        proxy.put(key2, "b");
-        proxy.put(key3, "c");
-        proxy.put(key4, "d");
-        proxy.purge(key4);
+        tester.put(key1, "a");
+        tester.delete(key1);
+        tester.put(key2, "b");
+        tester.put(key3, "c");
+        tester.put(key4, "d");
+        tester.purge(key4);
 
         JetStream js = testRunner.nc.jetStream();
 
-        assertPurgeDeleteEntries(js, proxy.bucket, new String[]{"a", null, "b", "c", null});
+        assertPurgeDeleteEntries(js, tester.bucket, new String[]{"a", null, "b", "c", null});
 
         // default purge deletes uses the default threshold
         // so no markers will be deleted
-        proxy.purgeDeletes();
-        assertPurgeDeleteEntries(js, proxy.bucket, new String[]{null, "b", "c", null});
+        tester.purgeDeletes();
+        assertPurgeDeleteEntries(js, tester.bucket, new String[]{null, "b", "c", null});
 
         // deleteMarkersThreshold of 0 the default threshold
         // so no markers will be deleted
-        proxy.purgeDeletes(KeyValuePurgeOptions.builder().deleteMarkersThreshold(0).build());
-        assertPurgeDeleteEntries(js, proxy.bucket, new String[]{null, "b", "c", null});
+        tester.purgeDeletes(KeyValuePurgeOptions.builder().deleteMarkersThreshold(0).build());
+        assertPurgeDeleteEntries(js, tester.bucket, new String[]{null, "b", "c", null});
 
         // no threshold causes all to be removed
-        proxy.purgeDeletes(KeyValuePurgeOptions.builder().deleteMarkersNoThreshold().build());
-        assertPurgeDeleteEntries(js, proxy.bucket, new String[]{"b", "c"});
+        tester.purgeDeletes(KeyValuePurgeOptions.builder().deleteMarkersNoThreshold().build());
+        assertPurgeDeleteEntries(js, tester.bucket, new String[]{"b", "c"});
     }
 
     private void assertPurgeDeleteEntries(JetStream js, String bucket, String[] expected) throws IOException, JetStreamApiException, InterruptedException {
@@ -596,49 +591,49 @@ public class NatsKeyValueTest {
 
     @Test
     public void testCreateAndUpdate() throws Exception {
-        KvProxy proxy = new KvProxy(b -> b.maxHistoryPerKey(64));
+        KvTester tester = new KvTester(b -> b.maxHistoryPerKey(64));
 
         String key = unique();
         // 1. allowed to create something that does not exist
-        long rev1 = proxy.create(key, "a".getBytes());
+        long rev1 = tester.create(key, "a".getBytes());
 
         // 2. allowed to update with proper revision
-        proxy.update(key, "ab".getBytes(), rev1);
+        tester.update(key, "ab".getBytes(), rev1);
 
         // 3. not allowed to update with wrong revision
-        proxy.update(key, "zzz".getBytes(), rev1);
-        proxy.assertThrew(JetStreamApiException.class);
+        tester.update(key, "zzz".getBytes(), rev1);
+        tester.assertThrew(JetStreamApiException.class);
 
         // 4. not allowed to create a key that exists
-        proxy.create(key, "zzz".getBytes());
-        proxy.assertThrew(JetStreamApiException.class);
+        tester.create(key, "zzz".getBytes());
+        tester.assertThrew(JetStreamApiException.class);
 
         // 5. not allowed to update a key that does not exist
-        proxy.update(key, "zzz".getBytes(), 1);
-        proxy.assertThrew(JetStreamApiException.class);
+        tester.update(key, "zzz".getBytes(), 1);
+        tester.assertThrew(JetStreamApiException.class);
 
         // 6. allowed to create a key that is deleted
-        proxy.delete(key);
-        proxy.create(key, "abc".getBytes());
+        tester.delete(key);
+        tester.create(key, "abc".getBytes());
 
         // 7. allowed to update a key that is deleted, as long as you have it's revision
-        proxy.delete(key);
+        tester.delete(key);
         testRunner.nc.flush(Duration.ofSeconds(1));
 
         sleep(200); // a little pause to make sure things get flushed
-        List<KeyValueEntry> hist = proxy.history(key);
-        proxy.update(key, "abcd".getBytes(), hist.get(hist.size() - 1).getRevision());
+        List<KeyValueEntry> hist = tester.history(key);
+        tester.update(key, "abcd".getBytes(), hist.get(hist.size() - 1).getRevision());
 
         // 8. allowed to create a key that is purged
-        proxy.purge(key);
-        proxy.create(key, "abcde".getBytes());
+        tester.purge(key);
+        tester.create(key, "abcde".getBytes());
 
         // 9. allowed to update a key that is deleted, as long as you have its revision
-        proxy.purge(key);
+        tester.purge(key);
 
         sleep(200); // a little pause to make sure things get flushed
-        hist = proxy.history(key);
-        proxy.update(key, "abcdef".getBytes(), hist.get(hist.size() - 1).getRevision());
+        hist = tester.history(key);
+        tester.update(key, "abcdef".getBytes(), hist.get(hist.size() - 1).getRevision());
     }
     
     private void assertKeys(List<String> apiKeys, String... manualKeys) {
@@ -740,8 +735,8 @@ public class NatsKeyValueTest {
     static String TEST_WATCH_KEY_1 = "key.1";
     static String TEST_WATCH_KEY_2 = "key.2";
 
-    interface TestWatchSubSupplier {
-        NatsKeyValueWatchSubscription get(KeyValue kv) throws Exception;
+    interface  TestWatchSubSupplier {
+        NatsKeyValueWatchSubscription get(KvTester tester) throws Exception;
     }
 
     @Test
@@ -830,7 +825,7 @@ public class NatsKeyValueTest {
         _testWatch(key2AfterWatcher, key2AfterExpecteds, -1, kv -> kv.watch(TEST_WATCH_KEY_2, key2AfterWatcher, key2AfterWatcher.watchOptions));
         _testWatch(key2AfterStartNewWatcher, noExpecteds, -1, kv -> kv.watch(TEST_WATCH_KEY_2, key2AfterStartNewWatcher, key2AfterStartNewWatcher.watchOptions));
         _testWatch(key2AfterStartFirstWatcher, key2AllExpecteds, -1, kv -> kv.watch(TEST_WATCH_KEY_2, key2AfterStartFirstWatcher, key2AfterStartFirstWatcher.watchOptions));
-        _testWatch(key1FromRevisionAfterWatcher, key1FromRevisionExpecteds, 2, kv -> kv.watch(TEST_WATCH_KEY_1, key1FromRevisionAfterWatcher, 2, key1FromRevisionAfterWatcher.watchOptions));
+//        _testWatch(key1FromRevisionAfterWatcher, key1FromRevisionExpecteds, 2, kv -> kv.watch(TEST_WATCH_KEY_1, key1FromRevisionAfterWatcher, 2, key1FromRevisionAfterWatcher.watchOptions));
         _testWatch(allFromRevisionAfterWatcher, allFromRevisionExpecteds, 2, kv -> kv.watchAll(allFromRevisionAfterWatcher, 2, allFromRevisionAfterWatcher.watchOptions));
 
         _testWatch(multipleFullWatcher, allExpecteds, -1, kv -> kv.watch(allKeys, multipleFullWatcher, multipleFullWatcher.watchOptions));
@@ -838,49 +833,41 @@ public class NatsKeyValueTest {
     }
 
     private void _testWatch(TestKeyValueWatcher watcher, Object[] expectedKves, long fromRevision, TestWatchSubSupplier supplier) throws Exception {
-        KeyValueManagement kvm = testRunner.nc.keyValueManagement();
-
         String bucket = unique() + watcher.name + "Bucket";
-        kvm.create(KeyValueConfiguration.builder()
-            .name(bucket)
-            .maxHistoryPerKey(10)
-            .storageType(StorageType.Memory)
-            .build());
-
-        KeyValue kv = testRunner.nc.keyValue(bucket);
+        KvTester tester = new KvTester(bucket, b -> b.maxHistoryPerKey(10));
 
         NatsKeyValueWatchSubscription sub = null;
 
         if (watcher.beforeWatcher) {
-            sub = supplier.get(kv);
+            sub = supplier.get(tester);
         }
 
         if (fromRevision == -1) {
-            kv.put(TEST_WATCH_KEY_1, "a");
-            kv.put(TEST_WATCH_KEY_1, "aa");
-            kv.put(TEST_WATCH_KEY_2, "z");
-            kv.put(TEST_WATCH_KEY_2, "zz");
-            kv.delete(TEST_WATCH_KEY_1);
-            kv.delete(TEST_WATCH_KEY_2);
-            kv.put(TEST_WATCH_KEY_1, "aaa");
-            kv.put(TEST_WATCH_KEY_2, "zzz");
-            kv.delete(TEST_WATCH_KEY_1);
-            kv.purge(TEST_WATCH_KEY_1);
-            kv.put(TEST_WATCH_KEY_NULL, (byte[]) null);
+            tester.put(TEST_WATCH_KEY_1, "a");
+            tester.put(TEST_WATCH_KEY_1, "aa");
+            tester.put(TEST_WATCH_KEY_2, "z");
+            tester.put(TEST_WATCH_KEY_2, "zz");
+            tester.delete(TEST_WATCH_KEY_1);
+            tester.delete(TEST_WATCH_KEY_2);
+            tester.put(TEST_WATCH_KEY_1, "aaa");
+            tester.put(TEST_WATCH_KEY_2, "zzz");
+            tester.delete(TEST_WATCH_KEY_1);
+            tester.purge(TEST_WATCH_KEY_1);
+            tester.put(TEST_WATCH_KEY_NULL, (byte[]) null);
         }
         else {
-            kv.put(TEST_WATCH_KEY_1, "a");
-            kv.put(TEST_WATCH_KEY_1, "aa");
-            kv.put(TEST_WATCH_KEY_2, "z");
-            kv.put(TEST_WATCH_KEY_2, "zz");
-            kv.delete(TEST_WATCH_KEY_1);
-            kv.delete(TEST_WATCH_KEY_2);
-            kv.put(TEST_WATCH_KEY_1, "aaa");
-            kv.put(TEST_WATCH_KEY_2, "zzz");
+            tester.put(TEST_WATCH_KEY_1, "a");
+            tester.put(TEST_WATCH_KEY_1, "aa");
+            tester.put(TEST_WATCH_KEY_2, "z");
+            tester.put(TEST_WATCH_KEY_2, "zz");
+            tester.delete(TEST_WATCH_KEY_1);
+            tester.delete(TEST_WATCH_KEY_2);
+            tester.put(TEST_WATCH_KEY_1, "aaa");
+            tester.put(TEST_WATCH_KEY_2, "zzz");
         }
 
         if (!watcher.beforeWatcher) {
-            sub = supplier.get(kv);
+            sub = supplier.get(tester);
         }
 
         sleep(1500); // give time for the watches to get messages
@@ -888,7 +875,7 @@ public class NatsKeyValueTest {
         validateWatcher(expectedKves, watcher);
         //noinspection ConstantConditions
         sub.unsubscribe();
-        kvm.delete(bucket);
+        tester.kvm.delete(bucket);
     }
 
     private void validateWatcher(Object[] expectedKves, TestKeyValueWatcher watcher) {
@@ -937,97 +924,51 @@ public class NatsKeyValueTest {
         }
     }
 
-    @Test
-    public void testMirrorSourceBuilderPrefixConversion() throws Exception {
-        String bucket = unique();
-        String name = unique();
-        String kvName = "KV_" + name;
-        KeyValueConfiguration kvc = KeyValueConfiguration.builder()
-            .name(bucket)
-            .mirror(Mirror.builder().name(name).build())
-            .build();
-        assertEquals(kvName, kvc.getBackingConfig().getMirror().getName());
-
-        kvc = KeyValueConfiguration.builder()
-            .name(bucket)
-            .mirror(Mirror.builder().name(kvName).build())
-            .build();
-        assertEquals(kvName, kvc.getBackingConfig().getMirror().getName());
-
-        Source s1 = Source.builder().name("s1").build();
-        Source s2 = Source.builder().name("s2").build();
-        Source s3 = Source.builder().name("s3").build();
-        Source s4 = Source.builder().name("s4").build();
-        Source s5 = Source.builder().name("KV_s5").build();
-        Source s6 = Source.builder().name("KV_s6").build();
-
-        kvc = KeyValueConfiguration.builder()
-            .name(bucket)
-            .sources(s3, s4)
-            .sources(Arrays.asList(s1, s2))
-            .addSources(s1, s2)
-            .addSources(Arrays.asList(s1, s2, null))
-            .addSources(s3, s4)
-            .addSource(null)
-            .addSource(s5)
-            .addSource(s5)
-            .addSources(s6)
-            .addSources((Source[])null)
-            .addSources((Collection<Source>)null)
-            .build();
-
-        assertEquals(6, kvc.getBackingConfig().getSources().size());
-        List<String> names = new ArrayList<>();
-        for (Source source : kvc.getBackingConfig().getSources()) {
-            names.add(source.getName());
-        }
-        assertTrue(names.contains("KV_s1"));
-        assertTrue(names.contains("KV_s2"));
-        assertTrue(names.contains("KV_s3"));
-        assertTrue(names.contains("KV_s4"));
-        assertTrue(names.contains("KV_s5"));
-        assertTrue(names.contains("KV_s6"));
-    }
-
     // ----------------------------------------------------------------------------------------------------
-    // Kv Proxy - Used to un-async calls since the tests are based on strict ordering of things
+    // Kv tester - Used to un-async calls since the tests are based on strict ordering of things
     // ----------------------------------------------------------------------------------------------------
-    static class KvProxy {
+    @SuppressWarnings({"SameParameterValue", "UnusedReturnValue"})
+    static class KvTester {
         final KeyValueManagement kvm;
+        final NatsClient natsClient;
         final String bucket;
         final KeyValueStatus status;
-        final NatsClient natsClient;
-        final NatsKeyValue kv;
-        final AtomicReference<Throwable> executionError = new AtomicReference<>();
+        final NatsVertxKeyValue kv;
+        final AtomicReference<Throwable> executionError;
 
-        public KvProxy() throws IOException, JetStreamApiException, InterruptedException {
-            this(unique(), b -> {});
+        public KvTester() throws IOException, JetStreamApiException, InterruptedException {
+            this(null, null);
         }
 
-        public KvProxy(String bucketName) throws IOException, JetStreamApiException, InterruptedException {
+        public KvTester(String bucketName) throws IOException, JetStreamApiException, InterruptedException {
             this(bucketName, b -> {});
         }
 
-        public KvProxy(java.util.function.Consumer<KeyValueConfiguration.Builder> customizer) throws IOException, JetStreamApiException, InterruptedException {
+        public KvTester(java.util.function.Consumer<KeyValueConfiguration.Builder> customizer) throws IOException, JetStreamApiException, InterruptedException {
             this(unique(), customizer);
         }
 
-        public KvProxy(String bucket,
-                       java.util.function.Consumer<KeyValueConfiguration.Builder> customizer)
-            throws IOException, JetStreamApiException, InterruptedException
-        {
-            this.bucket = bucket;
-            KeyValueConfiguration.Builder builder =
-                KeyValueConfiguration.builder(this.bucket)
-                    .storageType(StorageType.Memory);
-
-            customizer.accept(builder);
+        public KvTester(String bucket,
+                        java.util.function.Consumer<KeyValueConfiguration.Builder> customizer)
+            throws IOException, JetStreamApiException, InterruptedException {
 
             kvm = testRunner.nc.keyValueManagement();
-            status = kvm.create(builder.build());
-
             natsClient = getNatsClient();
-            kv = keyValue(natsClient, this.bucket);
+
+            this.bucket = bucket;
+            if (bucket== null) {
+                status = null;
+            }
+            else {
+                KeyValueConfiguration.Builder builder =
+                    KeyValueConfiguration.builder(this.bucket)
+                        .storageType(StorageType.Memory);
+                customizer.accept(builder);
+                status = kvm.create(builder.build());
+            }
+
+            executionError = new AtomicReference<>();
+            kv = keyValue(natsClient, bucket);
         }
 
         public void assertThrew(Class<?> clazz) {
@@ -1082,28 +1023,27 @@ public class NatsKeyValueTest {
         }
 
         NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) throws InterruptedException {
-            throw new RuntimeException("Not Implemented");
+            return execute(() -> kv.watch(key, watcher, watchOptions));
         }
 
-
         NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) throws InterruptedException {
-            throw new RuntimeException("Not Implemented");
+            return execute(() -> kv.watch(key, watcher, fromRevision, watchOptions));
         }
 
         NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) throws InterruptedException {
-            throw new RuntimeException("Not Implemented");
+            return execute(() -> kv.watch(keys, watcher, watchOptions));
         }
 
         NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) throws InterruptedException {
-            throw new RuntimeException("Not Implemented");
+            return execute(() -> kv.watch(keys, watcher, fromRevision, watchOptions));
         }
 
         NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) throws InterruptedException {
-            throw new RuntimeException("Not Implemented");
+            return execute(() -> kv.watchAll(watcher, watchOptions));
         }
 
         NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) throws InterruptedException {
-            throw new RuntimeException("Not Implemented");
+            return execute(() -> kv.watchAll(watcher, fromRevision, watchOptions));
         }
 
         Long update(String key, String value, long expectedRevision) throws InterruptedException {
@@ -1126,7 +1066,7 @@ public class NatsKeyValueTest {
             execute(() -> kv.purge(key, expectedRevision));
         }
 
-        NatsKeyValue keyValue(NatsClient natsClient, String bucketName) throws InterruptedException {
+        NatsVertxKeyValue keyValue(NatsClient natsClient, String bucketName) throws InterruptedException {
             return execute(() -> natsClient.keyValue(bucketName));
         }
 

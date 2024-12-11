@@ -7,7 +7,7 @@ import io.nats.client.impl.NatsKeyValueWatchSubscription;
 import io.nats.client.impl.NatsMessage;
 import io.nats.client.support.DateTimeUtils;
 import io.nats.client.support.Validator;
-import io.nats.vertx.NatsKeyValue;
+import io.nats.vertx.NatsVertxKeyValue;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -23,13 +23,13 @@ import java.util.List;
 import static io.nats.client.support.NatsConstants.GREATER_THAN;
 import static io.nats.client.support.NatsJetStreamConstants.*;
 import static io.nats.client.support.NatsKeyValueUtil.*;
-import static io.nats.client.support.Validator.validateNonWildcardKvKeyRequired;
+import static io.nats.client.support.Validator.*;
 
 
 /**
  * NATS Client implementation.
  */
-public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
+public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue {
 
     // JNats KeyValue parallel variables
     private final String bucketName;
@@ -37,6 +37,7 @@ public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
     private final String streamSubject;
     private final String readPrefix;
     private final String writePrefix;
+    private final KeyValue kv;
 
     /**
      * Create instance
@@ -47,11 +48,11 @@ public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
      * @param bucketName
      * @param kvo              keyValueOptions also contains jetStreamOptions use to make jetstream/management implementations
      */
-    public NatsKeyValueImpl(final Connection conn,
-                            final Vertx vertx,
-                            final Handler<Throwable> exceptionHandler,
-                            final String bucketName,
-                            final KeyValueOptions kvo)
+    public NatsVertxKeyValueImpl(final Connection conn,
+                                 final Vertx vertx,
+                                 final Handler<Throwable> exceptionHandler,
+                                 final String bucketName,
+                                 final KeyValueOptions kvo)
     {
         super(conn, vertx, exceptionHandler, kvo == null ? null : kvo.getJetStreamOptions());
 
@@ -65,20 +66,37 @@ public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
         }
         else {
             writePrefix = kvo.getJetStreamOptions().getPrefix() + readPrefix;
+
+        }
+        try {
+            this.kv = conn.keyValue(bucketName, kvo);
+        }
+        catch (IOException e) {
+            if (exceptionHandler != null) {
+                exceptionHandler.handle(e);
+            }
+            throw new RuntimeException(e);
         }
     }
 
     @Override
-    public NatsKeyValueImpl exceptionHandler(Handler<Throwable> handler) {
+    public NatsImpl getImpl() {
+        return this;
+    }
+
+    @Override
+    public NatsVertxKeyValueImpl exceptionHandler(Handler<Throwable> handler) {
         exceptionHandler.set(handler);
         return this;
     }
 
-    String readSubject(String key) {
+    @Override
+    public String readSubject(String key) {
         return readPrefix + key;
     }
 
-    String writeSubject(String key) {
+    @Override
+    public String writeSubject(String key) {
         return writePrefix + key;
     }
 
@@ -185,33 +203,43 @@ public class NatsKeyValueImpl extends NatsImpl implements NatsKeyValue {
     }
 
     @Override
-    public NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) {
-        return null;
+    public Future<NatsKeyValueWatchSubscription> watch(String key, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) {
+        return watch(Collections.singletonList(key), watcher, -1, watchOptions);
     }
 
     @Override
-    public NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
-        return null;
+    public Future<NatsKeyValueWatchSubscription> watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
+        return watch(Collections.singletonList(key), watcher, -1, watchOptions);
     }
 
     @Override
-    public NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) {
-        return null;
+    public Future<NatsKeyValueWatchSubscription> watch(List<String> keys, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) {
+        return watch(keys, watcher, -1, watchOptions);
     }
 
     @Override
-    public NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
-        return null;
+    public Future<NatsKeyValueWatchSubscription> watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
+        final Promise<NatsKeyValueWatchSubscription> promise = context().promise();
+        context().executeBlocking(event -> {
+            try {
+                validateKvKeysWildcardAllowedRequired(keys);
+                validateNotNull(watcher, "Watcher is required");
+                promise.complete(kv.watch(keys, watcher, fromRevision, watchOptions));
+            } catch (Exception e) {
+                handleException(promise, e);
+            }
+        }, false);
+        return promise.future();
     }
 
     @Override
-    public NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) {
-        return null;
+    public Future<NatsKeyValueWatchSubscription> watchAll(KeyValueWatcher watcher, KeyValueWatchOption... watchOptions) {
+        return watch(Collections.singletonList(GREATER_THAN), watcher, -1, watchOptions);
     }
 
     @Override
-    public NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
-        return null;
+    public Future<NatsKeyValueWatchSubscription> watchAll(KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
+        return watch(Collections.singletonList(GREATER_THAN), watcher, fromRevision, watchOptions);
     }
 
     public Future<List<String>> keys() {
