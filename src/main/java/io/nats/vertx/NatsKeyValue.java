@@ -1,12 +1,10 @@
 package io.nats.vertx;
 
-import io.nats.client.JetStreamApiException;
 import io.nats.client.api.*;
 import io.nats.client.impl.NatsKeyValueWatchSubscription;
 import io.vertx.core.Future;
 import io.vertx.core.streams.StreamBase;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -25,9 +23,6 @@ public interface NatsKeyValue extends StreamBase {
      * when the key exists and is live (not deleted and not purged)
      * @param key the key
      * @return the KvEntry object or null if not found.
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<KeyValueEntry> get(String key);
@@ -38,9 +33,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param key the key
      * @param revision the revision
      * @return the KvEntry object or null if not found.
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<KeyValueEntry> get(String key, long revision);
@@ -50,9 +42,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param key the key
      * @param value the bytes of the value
      * @return the revision number for the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<Long> put(String key, byte[] value);
@@ -62,9 +51,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param key the key
      * @param value the UTF-8 string
      * @return the revision number for the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<Long> put(String key, String value);
@@ -74,9 +60,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param key the key
      * @param value the number
      * @return the revision number for the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<Long> put(String key, Number value);
@@ -87,9 +70,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param key the key
      * @param value the bytes of the value
      * @return the revision number for the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<Long> create(String key, byte[] value);
@@ -100,9 +80,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param value the bytes of the value
      * @param expectedRevision the expected last revision
      * @return the revision number for the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<Long> update(String key, byte[] value, long expectedRevision);
@@ -113,9 +90,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param value the UTF-8 string
      * @param expectedRevision the expected last revision
      * @return the revision number for the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      * @throws IllegalArgumentException the server is not JetStream enabled
      */
     Future<Long> update(String key, String value, long expectedRevision);
@@ -123,9 +97,6 @@ public interface NatsKeyValue extends StreamBase {
     /**
      * Soft deletes the key by placing a delete marker.
      * @param key the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      */
     Future<Void> delete(String key);
 
@@ -133,18 +104,12 @@ public interface NatsKeyValue extends StreamBase {
      * Soft deletes the key by placing a delete marker iff the key exists and its last revision matches the expected
      * @param key the key
      * @param expectedRevision the expected last revision
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      */
     Future<Void> delete(String key, long expectedRevision);
 
     /**
      * Purge all values/history from the specific key
      * @param key the key
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      */
     Future<Void> purge(String key);
 
@@ -152,9 +117,6 @@ public interface NatsKeyValue extends StreamBase {
      * Purge all values/history from the specific key iff the key exists and its last revision matches the expected
      * @param key the key
      * @param expectedRevision the expected last revision
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
      */
     Future<Void> purge(String key, long expectedRevision);
 
@@ -164,10 +126,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param watcher the watcher the implementation to receive changes
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
 
@@ -178,10 +136,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param fromRevision the revision to start from
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     NatsKeyValueWatchSubscription watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
 
@@ -191,10 +145,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param watcher the watcher the implementation to receive changes
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
 
@@ -205,10 +155,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param fromRevision the revision to start from
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     NatsKeyValueWatchSubscription watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
 
@@ -217,10 +163,6 @@ public interface NatsKeyValue extends StreamBase {
      * @param watcher the watcher the implementation to receive changes
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, KeyValueWatchOption... watchOptions);
 
@@ -230,20 +172,12 @@ public interface NatsKeyValue extends StreamBase {
      * @param fromRevision the revision to start from
      * @param watchOptions the watch options to apply. If multiple conflicting options are supplied, the last options wins.
      * @return The KeyValueWatchSubscription
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     NatsKeyValueWatchSubscription watchAll(KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions);
 
     /**
      * Get a list of the keys in a bucket.
      * @return List of keys
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<List<String>> keys();
 
@@ -252,10 +186,6 @@ public interface NatsKeyValue extends StreamBase {
      * subject-like string, for instance "key" or "key.foo.*" or "key.&gt;"
      * @param filter the subject like key filter
      * @return List of keys
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<List<String>> keys(String filter);
 
@@ -264,10 +194,6 @@ public interface NatsKeyValue extends StreamBase {
      * subject-like strings, for instance "aaa.*", "bbb.*;"
      * @param filters the subject like key filters
      * @return List of keys
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<List<String>> keys(List<String> filters);
 
@@ -275,40 +201,24 @@ public interface NatsKeyValue extends StreamBase {
      * Get the history (list of KeyValueEntry) for a key
      * @param key the key
      * @return List of KvEntry
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<List<KeyValueEntry>> history(String key);
 
     /**
      * Remove history from all keys that currently are deleted or purged
      * with using a default KeyValuePurgeOptions
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<Void> purgeDeletes();
 
     /**
      * Remove history from all keys that currently are deleted or purged, considering options.
      * @param options the purge options
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<Void> purgeDeletes(KeyValuePurgeOptions options);
 
     /**
      * Get the KeyValueStatus object
      * @return the status object
-     * @throws IOException covers various communication issues with the NATS
-     *         server such as timeout or interruption
-     * @throws JetStreamApiException the request had an error related to the data
-     * @throws InterruptedException if the thread is interrupted
      */
     Future<KeyValueStatus> getStatus();
 }
