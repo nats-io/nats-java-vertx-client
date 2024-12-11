@@ -10,8 +10,8 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
     private final VertxDispatcher dispatcher;
     private final ContextInternal context;
 
-    VertxDispatcherMessageQueue(VertxDispatcher dispatcher, ContextInternal context) {
-        super(true);
+    VertxDispatcherMessageQueue(VertxDispatcher dispatcher, ContextInternal context, NatsConnection conn) {
+        super(true, conn.getOptions().getRequestCleanupInterval());
         this.dispatcher = dispatcher;
         this.context = context;
     }
@@ -63,11 +63,6 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
     @Override
     void poisonTheQueue() {
         throw new IllegalStateException("poisonTheQueue not used.");
-    }
-
-    @Override
-    boolean offer(NatsMessage msg) {
-        throw new IllegalStateException("offer not used.");
     }
 
     @Override
