@@ -1,4 +1,4 @@
-name: GitHub Merge Or Release Build Actions For Vert.x NATS client
+name: Build Release
 
 on:
   release:

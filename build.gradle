@@ -13,11 +13,12 @@ plugins {
 def jarVersion = "2.1.0"
 group = 'io.nats'
 
-def isMerge = System.getenv("BUILD_EVENT") == "push"
 def isRelease = System.getenv("BUILD_EVENT") == "release"
+def brn = System.getenv("BRANCH_REF_NAME")
+def snap = brn == null || brn.equals("") ? "-SNAPSHOT" : "." + brn + "-SNAPSHOT"
 
 // version is the variable the build actually uses.
-version = isRelease ? jarVersion : jarVersion + "-SNAPSHOT"
+version = isRelease ? jarVersion : jarVersion + snap
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -94,13 +95,11 @@ artifacts {
     archives javadocJar, sourcesJar
 }
 
-if (isMerge || isRelease) {
-    nexusPublishing {
-        repositories {
-            sonatype {
-                username = System.getenv('OSSRH_USERNAME')
-                password = System.getenv('OSSRH_PASSWORD')
-            }
+nexusPublishing {
+    repositories {
+        sonatype {
+            username = System.getenv('OSSRH_USERNAME')
+            password = System.getenv('OSSRH_PASSWORD')
         }
     }
 }
