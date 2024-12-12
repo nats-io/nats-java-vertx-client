@@ -63,7 +63,7 @@ public class TestUtils {
         natsOptions.setExceptionHandler(exceptionHandler);
         natsOptions.setNatsBuilder(new Options.Builder().connectionTimeout(Duration.ofSeconds(5)));
         System.out.println("Client connecting to localhost:" + port);
-        natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port})
+        natsOptions.getNatsBuilder().server("localhost:" + port)
                 .connectionListener((conn, type) -> {
                     System.out.println("Connection EVENT " + type);
 
@@ -110,7 +110,7 @@ public class TestUtils {
             final String serverName = "name" + System.currentTimeMillis();
 
             Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                    .servers(new String[]{"localhost:" + port}).errorListener(new ErrorListener() {
+                    .server("localhost:" + port).errorListener(new ErrorListener() {
                         @Override
                         public void errorOccurred(Connection conn, String error) {
                             System.out.println(error);

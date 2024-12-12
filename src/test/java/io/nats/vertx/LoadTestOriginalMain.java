@@ -85,7 +85,7 @@ public class LoadTestOriginalMain {
 
 
         Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                .servers(new String[]{"localhost:" + port});
+                .server("localhost:" + port);
         Connection nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
         StreamInfo streamInfo = null;
@@ -114,7 +114,7 @@ public class LoadTestOriginalMain {
         final Options.Builder natsOptions = new Options.Builder().connectionTimeout(Duration.ofSeconds(5));
         final CountDownLatch latch = new CountDownLatch(1);
 
-        natsOptions.servers(new String[]{"localhost:" + port}).connectionListener(new ConnectionListener() {
+        natsOptions.server("localhost:" + port).connectionListener(new ConnectionListener() {
             @Override
             public void connectionEvent(Connection conn, Events type) {
                 System.out.println("Connection EVENT " + type);

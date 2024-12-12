@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class NatsClientTest {
 
     final String SUBJECT_NAME = "testSubject";
-    final String DURABLE_CONSUMER_NAME = "consumer";
 
     NatsServerRunner natsServerRunner;
 
@@ -51,7 +50,7 @@ public class NatsClientTest {
         port = natsServerRunner.getPort();
 
         Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                .servers(new String[]{"localhost:" + port});
+                .server("localhost:" + port);
         nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
         StreamInfo streamInfo = null;

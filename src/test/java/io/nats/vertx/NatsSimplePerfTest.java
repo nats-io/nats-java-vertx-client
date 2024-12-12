@@ -48,7 +48,7 @@ public class NatsSimplePerfTest {
 
 
         Options.Builder builder = new Options.Builder().connectionTimeout(Duration.ofSeconds(5))
-                .servers(new String[]{"localhost:" + port});
+                .server("localhost:" + port);
         nc = Nats.connect(builder.build());
         JetStreamManagement jsm = nc.jetStreamManagement();
         StreamInfo streamInfo = null;
@@ -202,7 +202,7 @@ public class NatsSimplePerfTest {
         final NatsOptions natsOptions = new NatsOptions();
         natsOptions.setVertx(Vertx.vertx());
         natsOptions.setNatsBuilder(new Options.Builder());
-        natsOptions.getNatsBuilder().servers(new String[]{"localhost:" + port}).connectionListener(new ConnectionListener() {
+        natsOptions.getNatsBuilder().server("localhost:" + port).connectionListener(new ConnectionListener() {
             @Override
             public void connectionEvent(Connection conn, Events type) {
                 System.out.println("Connection EVENT " + type);
