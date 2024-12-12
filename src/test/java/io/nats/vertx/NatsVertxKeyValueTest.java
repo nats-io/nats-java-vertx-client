@@ -720,7 +720,6 @@ public class NatsVertxKeyValueTest {
 
         @Override
         public void watch(KeyValueEntry kve) {
-//            Debug.info("W", kve);
             entries.add(kve);
         }
 
@@ -826,7 +825,7 @@ public class NatsVertxKeyValueTest {
         _testWatch(key2AfterWatcher, key2AfterExpecteds, -1, kv -> kv.watch(TEST_WATCH_KEY_2, key2AfterWatcher, key2AfterWatcher.watchOptions));
         _testWatch(key2AfterStartNewWatcher, noExpecteds, -1, kv -> kv.watch(TEST_WATCH_KEY_2, key2AfterStartNewWatcher, key2AfterStartNewWatcher.watchOptions));
         _testWatch(key2AfterStartFirstWatcher, key2AllExpecteds, -1, kv -> kv.watch(TEST_WATCH_KEY_2, key2AfterStartFirstWatcher, key2AfterStartFirstWatcher.watchOptions));
-//        _testWatch(key1FromRevisionAfterWatcher, key1FromRevisionExpecteds, 2, kv -> kv.watch(TEST_WATCH_KEY_1, key1FromRevisionAfterWatcher, 2, key1FromRevisionAfterWatcher.watchOptions));
+        _testWatch(key1FromRevisionAfterWatcher, key1FromRevisionExpecteds, 2, kv -> kv.watch(TEST_WATCH_KEY_1, key1FromRevisionAfterWatcher, 2, key1FromRevisionAfterWatcher.watchOptions));
         _testWatch(allFromRevisionAfterWatcher, allFromRevisionExpecteds, 2, kv -> kv.watchAll(allFromRevisionAfterWatcher, 2, allFromRevisionAfterWatcher.watchOptions));
 
         _testWatch(multipleFullWatcher, allExpecteds, -1, kv -> kv.watch(allKeys, multipleFullWatcher, multipleFullWatcher.watchOptions));
@@ -836,7 +835,6 @@ public class NatsVertxKeyValueTest {
     private void _testWatch(TestKeyValueWatcher watcher, Object[] expectedKves, long fromRevision, TestWatchSubSupplier supplier) throws Exception {
         String bucket = unique() + watcher.name + "Bucket";
         KvTester tester = new KvTester(bucket, b -> b.maxHistoryPerKey(10));
-//        Debug.info("TW 1", tester.status);
 
         NatsKeyValueWatchSubscription sub = null;
 
@@ -867,7 +865,6 @@ public class NatsVertxKeyValueTest {
             tester.put(TEST_WATCH_KEY_1, "aaa");
             tester.put(TEST_WATCH_KEY_2, "zzz");
         }
-//        Debug.info("TW 2", tester.getStatus());
 
         if (!watcher.beforeWatcher) {
             sub = supplier.get(tester);

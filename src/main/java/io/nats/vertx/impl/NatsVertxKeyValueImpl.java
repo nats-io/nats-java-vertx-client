@@ -209,7 +209,7 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
 
     @Override
     public Future<NatsKeyValueWatchSubscription> watch(String key, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
-        return watch(Collections.singletonList(key), watcher, -1, watchOptions);
+        return watch(Collections.singletonList(key), watcher, fromRevision, watchOptions);
     }
 
     @Override
