@@ -6,7 +6,7 @@ This component provides a NATS client for reading and sending messages from/to a
 The nats-java-vertx-client is a Java client library for connecting to the NATS messaging system. It is built on top of
 the Vert.x event-driven framework and provides an asynchronous, non-blocking API for sending and receiving messages over NATS.
 
-**Current Release**: 2.0.3 &nbsp; **Current Snapshot**: 2.0.4-SNAPSHOT
+**Current Release**: 2.0.3 &nbsp; **Current Snapshot**: 2.1.0-SNAPSHOT
 
 [![License Apache 2](https://img.shields.io/badge/License-Apache2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.nats/nats-vertx-interface/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.nats/nats-vertx-interface)
@@ -35,9 +35,6 @@ To use this component, add the following dependency to the dependencies section 
 ```
 compile io.nats:nats-vertx-interface:${maven.version}
 ```
-
-
-
 
 ## Connecting to NATS
 To connect to NATS, you must first create a NatsClient object by specifying the NATS server URL
@@ -68,10 +65,8 @@ NatsClient client = NatsClient.create(config.setVertx(vertx));
 
 // Connect
 client.connect()
-        .onSuccess(v ->
-                    System.out.println("NATS successfully connected!"))
-        .onFailure(err ->
-          System.out.println("Fail to connect to NATS " + err.getMessage()));
+    .onSuccess(v -> System.out.println("NATS successfully connected!"))
+    .onFailure(err -> System.out.println("Fail to connect to NATS " + err.getMessage()));
 ```
 
 This code creates a NatsClient object, and sets the Vert.x instance, and connects to a NATS server using the Vert.x Future
@@ -93,11 +88,11 @@ Once connected, publishing is accomplished via one of three methods:
 
 ```java
     client
-        .publish("subject", "hello world".getBytes(StandardCharsets.UTF_8))
-        .onSuccess(v ->
-                    System.out.println("Message published!"))
-        .onFailure(err ->
-        System.out.println("Something went wrong " + err.getMessage()));
+    .publish("subject", "hello world".getBytes(StandardCharsets.UTF_8))
+    .onSuccess(v ->
+    System.out.println("Message published!"))
+    .onFailure(err ->
+    System.out.println("Something went wrong " + err.getMessage()));
 ```
 
 This code publishes a message to a NATS subject using the `publish` method of a `NatsClient` object, and handles the asynchronous
@@ -121,9 +116,9 @@ message to the console that includes the error message returned by the Throwable
 
 ```java
     client
-        .publish("subject", "replyto", "hello world".getBytes(StandardCharsets.UTF_8))
-        .onSuccess(v -> System.out.println("Message published!"))
-        .onFailure(err ->   System.out.println("Something went wrong " + err.getMessage()));
+    .publish("subject", "replyto", "hello world".getBytes(StandardCharsets.UTF_8))
+    .onSuccess(v -> System.out.println("Message published!"))
+    .onFailure(err ->   System.out.println("Something went wrong " + err.getMessage()));
 ```
 
 This code publishes a message to a NATS subject and specifies a reply-to subject to use for any responses received in
@@ -146,12 +141,12 @@ a message to the console that includes the error message returned by the Throwab
 
 ```java
 
-        client
-        .request("subject", "hello world".getBytes(StandardCharsets.UTF_8))
-        .onSuccess(response ->
-        System.out.println("Received response " + response.getData()))
-        .onFailure(err ->
-        System.out.println("Something went wrong " + err.getMessage()));
+client
+    .request("subject", "hello world".getBytes(StandardCharsets.UTF_8))
+    .onSuccess(response ->
+    System.out.println("Received response " + response.getData()))
+    .onFailure(err ->
+    System.out.println("Something went wrong " + err.getMessage()));
 ```
 
 When a request is made and a reply is expected, the NATS messaging system provides a response. This is achieved through
@@ -178,7 +173,7 @@ The Java NATS library also provides a mechanism to listen to messages.
 ```java
 
 natsClient.subscribe(SUBJECT_NAME, "FOO", event -> {
-        doSomethingWithTheEvent(event);
+doSomethingWithTheEvent(event);
         
         });
 ```
@@ -208,9 +203,9 @@ After establishing a connection as described above, create a JetStream Context.
 final Future<NatsStream> streamFuture = natsClient.jetStream();
 
 streamFuture.onSuccess(natsStream -> {
-            doSomethingWithStream(natsStream)
+doSomethingWithStream(natsStream)
         }).onFailure(error -> {
-            handleTheStreamFailed(error);
+handleTheStreamFailed(error);
         });
 ```
 
@@ -233,17 +228,17 @@ final NatsStream jetStreamSub = ...
 final String data = "data";
 
 jetStreamSub.subscribe(SUBJECT_NAME, event -> {
-        doSomethingWithMessage(event.message());
-        
-        }, true, PushSubscribeOptions.builder().build());
+doSomethingWithMessage(event.message());
+
+    }, true, PushSubscribeOptions.builder().build());
 
 
 // Send a message
-            final NatsMessage message = NatsMessage.builder()
-                    .subject(SUBJECT_NAME)
-                    .data(data + i, StandardCharsets.UTF_8).build();
+final NatsMessage message = NatsMessage.builder()
+    .subject(SUBJECT_NAME)
+    .data(data + i, StandardCharsets.UTF_8).build();
             jetStreamPub.publish(message).onSuccess(event -> ...).onError(error -> ...);
-        
+
 ```
 
 To unsubscribe from JetStream the interface is similar to unsubscribing to a NATS subscription.
@@ -251,7 +246,7 @@ To unsubscribe from JetStream the interface is similar to unsubscribing to a NAT
 
 ```java
         jetStreamSub.unsubscribe(SUBJECT_NAME).onSuccess(event -> System.out.println("Unsubscribed"))
-                .onFailure(Throwable::printStackTrace);
+    .onFailure(Throwable::printStackTrace);
 ```
 
 There are a variety of publish options that can be set when publishing.
@@ -282,19 +277,19 @@ Push subscriptions are asynchronous. The server pushes messages to the client.
 
 
 PushSubscribeOptions so = PushSubscribeOptions.builder()
-.durable("optional-durable-name")
-.build();
+    .durable("optional-durable-name")
+    .build();
 
 boolean autoAck = ...
 
-js.subscribe("my-subject", (msg) -> {
+    js.subscribe("my-subject", (msg) -> {
 // Process the message.
 // Ack the message depending on the ack model
-        }, autoAck, so)
-.onSuccess(done ->
-System.out.println("Subscribe success."))
-.onFailure(err ->
-System.out.println("Something went wrong " + err.getMessage()));
+    }, autoAck, so)
+    .onSuccess(done ->
+    System.out.println("Subscribe success."))
+    .onFailure(err ->
+    System.out.println("Something went wrong " + err.getMessage()));
 
 ```
 
@@ -304,27 +299,27 @@ Pull subscriptions are always synchronous. The server organizes messages into a 
 
 ```java 
 PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
-.durable("durable-name-is-required")
-.build();
+    .durable("durable-name-is-required")
+    .build();
 
 js.subscribe("subject", pullOptions)
 .onSuccess(done ->
-System.out.println("Subscribe success.")
+    System.out.println("Subscribe success.")
 JetStreamSubscription sub = done.result()
 
       sub
-        .fetch(100, Duration.ofSeconds(1))
-        .onSuccess(messages ->
-          for (Message m : messages) {
-            // process message
-            m.ackAsync().onSuccess(e -> ...).onError(err -> ...);
-          }        
-        )
-        .onFailure(err ->
-          System.out.println("Something went wrong " + err.getMessage()))
-      
+          .fetch(100, Duration.ofSeconds(1))
+    .onSuccess(messages ->
+    for (Message m : messages) {
+    // process message
+    m.ackAsync().onSuccess(e -> ...).onError(err -> ...);
+    }
+    )
     .onFailure(err ->
-      System.out.println("Something went wrong " + err.getMessage()));
+    System.out.println("Something went wrong " + err.getMessage()))
+
+    .onFailure(err ->
+    System.out.println("Something went wrong " + err.getMessage()));
 ```
 
 The fetch pull is a macro pull that uses advanced pulls under the covers to return a list of messages.
