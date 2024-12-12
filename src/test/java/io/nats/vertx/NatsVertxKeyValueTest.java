@@ -720,6 +720,7 @@ public class NatsVertxKeyValueTest {
 
         @Override
         public void watch(KeyValueEntry kve) {
+//            Debug.info("W", kve);
             entries.add(kve);
         }
 
@@ -835,6 +836,7 @@ public class NatsVertxKeyValueTest {
     private void _testWatch(TestKeyValueWatcher watcher, Object[] expectedKves, long fromRevision, TestWatchSubSupplier supplier) throws Exception {
         String bucket = unique() + watcher.name + "Bucket";
         KvTester tester = new KvTester(bucket, b -> b.maxHistoryPerKey(10));
+//        Debug.info("TW 1", tester.status);
 
         NatsKeyValueWatchSubscription sub = null;
 
@@ -865,6 +867,7 @@ public class NatsVertxKeyValueTest {
             tester.put(TEST_WATCH_KEY_1, "aaa");
             tester.put(TEST_WATCH_KEY_2, "zzz");
         }
+//        Debug.info("TW 2", tester.getStatus());
 
         if (!watcher.beforeWatcher) {
             sub = supplier.get(tester);
@@ -937,7 +940,7 @@ public class NatsVertxKeyValueTest {
         final AtomicReference<Throwable> executionError;
 
         public KvTester() throws IOException, JetStreamApiException, InterruptedException {
-            this(null, null);
+            this(unique(), b -> {});
         }
 
         public KvTester(String bucketName) throws IOException, JetStreamApiException, InterruptedException {
@@ -954,10 +957,12 @@ public class NatsVertxKeyValueTest {
 
             kvm = testRunner.nc.keyValueManagement();
             natsClient = getNatsClient();
+            executionError = new AtomicReference<>();
 
             this.bucket = bucket;
             if (bucket== null) {
                 status = null;
+                kv = null;
             }
             else {
                 KeyValueConfiguration.Builder builder =
@@ -965,10 +970,8 @@ public class NatsVertxKeyValueTest {
                         .storageType(StorageType.Memory);
                 customizer.accept(builder);
                 status = kvm.create(builder.build());
+                kv = keyValue(natsClient, bucket);
             }
-
-            executionError = new AtomicReference<>();
-            kv = keyValue(natsClient, bucket);
         }
 
         public void assertThrew(Class<?> clazz) {
@@ -1007,11 +1010,13 @@ public class NatsVertxKeyValueTest {
         }
 
         Long put(String key, String value) throws InterruptedException {
-            return execute(() -> kv.put(key, value.getBytes(StandardCharsets.UTF_8)));
+            byte[] bytes = value == null ? null : value.getBytes(StandardCharsets.UTF_8);
+            return execute(() -> kv.put(key, bytes));
         }
 
         Long put(String key, Number value) throws InterruptedException {
-            return execute(() -> kv.put(key, value.toString().getBytes(StandardCharsets.US_ASCII)));
+            byte[] bytes = value == null ? null : value.toString().getBytes(StandardCharsets.UTF_8);
+            return execute(() -> kv.put(key, bytes));
         }
 
         Long create(String key, byte[] value) throws InterruptedException {
