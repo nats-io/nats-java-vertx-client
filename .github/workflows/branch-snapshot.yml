@@ -34,7 +34,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Build and Test
-        run: chmod +x gradlew && ./gradlew clean test jacocoTestReport coveralls
+        run: chmod +x gradlew && ./gradlew clean test
       - name: Verify Javadoc
         if: ${{ success() }}
         run: ./gradlew javadoc
