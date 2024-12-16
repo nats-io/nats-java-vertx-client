@@ -10,7 +10,6 @@ import io.nats.client.support.Validator;
 import io.nats.vertx.NatsVertxKeyValue;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 
 import java.io.IOException;
@@ -25,9 +24,8 @@ import static io.nats.client.support.NatsJetStreamConstants.*;
 import static io.nats.client.support.NatsKeyValueUtil.*;
 import static io.nats.client.support.Validator.*;
 
-
 /**
- * NATS Client implementation.
+ * NATS Key Value Implementation
  */
 public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue {
 
@@ -44,8 +42,8 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
      *
      * @param conn             Nats connection
      * @param vertx            vertx
-     * @param exceptionHandler
-     * @param bucketName
+     * @param exceptionHandler handler
+     * @param bucketName       bucket name
      * @param kvo              keyValueOptions also contains jetStreamOptions use to make jetstream/management implementations
      */
     public NatsVertxKeyValueImpl(final Connection conn,
@@ -126,53 +124,44 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
 
     @Override
     public Future<Long> put(String key, byte[] value) {
-        return publishReturnSequence(key, value, null);
+        return publishData(key, value, null);
     }
 
     @Override
     public Future<Long> put(String key, String value) {
-        return publishReturnSequence(key, value.getBytes(StandardCharsets.UTF_8), null);
+        return publishData(key, value.getBytes(StandardCharsets.UTF_8), null);
     }
 
     @Override
     public Future<Long> put(String key, Number value) {
-        return publishReturnSequence(key, value.toString().getBytes(StandardCharsets.US_ASCII), null);
+        return publishData(key, value.toString().getBytes(StandardCharsets.US_ASCII), null);
     }
 
     @Override
     public Future<Long> create(String key, byte[] value) {
-        final Promise<Long> promise = context().promise();
-        context().executeBlocking(event -> {
+        return executeUnorderedBlocking(() -> {
             try {
-                try {
-                    Headers h = new Headers().add(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(0));
-                    PublishAck pa = _publish(key, value, h);
-                    promise.complete(pa.getSeqno());
-                }
-                catch (JetStreamApiException e) {
-                    if (e.getApiErrorCode() == JS_WRONG_LAST_SEQUENCE) {
-                        // must check if the last message for this subject is a delete or purge
-                        KeyValueEntry kve = _getLastEntry(key, false);
-                        if (kve != null && kve.getOperation() != KeyValueOperation.PUT) {
-                            Headers h = new Headers().add(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(kve.getRevision()));
-                            PublishAck pa = _publish(key, value, h);
-                            promise.complete(pa.getSeqno());
-                            return;
-                        }
-                    }
-                    promise.fail(e);
-                }
-            } catch (Exception e) {
-                handleException(promise, e);
+                Headers h = new Headers().add(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(0));
+                return _publish(key, value, h).getSeqno();
             }
-        }, false);
-        return promise.future();
+            catch (JetStreamApiException e) {
+                if (e.getApiErrorCode() == JS_WRONG_LAST_SEQUENCE) {
+                    // must check if the last message for this subject is a delete or purge
+                    KeyValueEntry kve = _getLastEntry(key, false);
+                    if (kve != null && kve.getOperation() != KeyValueOperation.PUT) {
+                        Headers h = new Headers().add(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(kve.getRevision()));
+                        return _publish(key, value, h).getSeqno();
+                    }
+                }
+                throw e;
+            }
+        });
     }
 
     @Override
     public Future<Long> update(String key, byte[] value, long expectedRevision) {
         Headers h = new Headers().add(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(expectedRevision));
-        return publishReturnSequence(key, value, h);
+        return publishData(key, value, h);
     }
 
     @Override
@@ -182,24 +171,24 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
 
     @Override
     public Future<Void> delete(String key) {
-        return publishReturnVoid(key, null, getDeleteHeaders());
+        return publishCommand(key, getDeleteHeaders());
     }
 
     @Override
     public Future<Void> delete(String key, long expectedRevision) {
         Headers h = getDeleteHeaders().put(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(expectedRevision));
-        return publishReturnVoid(key, null, h);
+        return publishCommand(key, h);
     }
 
     @Override
     public Future<Void> purge(String key) {
-        return publishReturnVoid(key, null, getPurgeHeaders());
+        return publishCommand(key, getPurgeHeaders());
     }
 
     @Override
     public Future<Void> purge(String key, long expectedRevision) {
         Headers h = getPurgeHeaders().put(EXPECTED_LAST_SUB_SEQ_HDR, Long.toString(expectedRevision));
-        return publishReturnVoid(key, null, h);
+        return publishCommand(key, h);
     }
 
     @Override
@@ -219,17 +208,11 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
 
     @Override
     public Future<NatsKeyValueWatchSubscription> watch(List<String> keys, KeyValueWatcher watcher, long fromRevision, KeyValueWatchOption... watchOptions) {
-        final Promise<NatsKeyValueWatchSubscription> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                validateKvKeysWildcardAllowedRequired(keys);
-                validateNotNull(watcher, "Watcher is required");
-                promise.complete(kv.watch(keys, watcher, fromRevision, watchOptions));
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+        return executeUnorderedBlocking(() -> {
+            validateKvKeysWildcardAllowedRequired(keys);
+            validateNotNull(watcher, "Watcher is required");
+            return kv.watch(keys, watcher, fromRevision, watchOptions);
+        });
     }
 
     @Override
@@ -261,38 +244,27 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
     }
 
     private Future<List<String>> _keys(List<String> readSubjectFilters) {
-        final Promise<List<String>> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                List<String> list = new ArrayList<>();
-                visitSubject(streamName, readSubjectFilters, DeliverPolicy.LastPerSubject, true, false, m -> {
-                    KeyValueOperation op = getOperation(m.getHeaders());
-                    if (op == KeyValueOperation.PUT) {
-                        list.add(new BucketAndKey(m).key);
-                    }
-                });
-                promise.complete(list);
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+        return executeUnorderedBlocking(() -> {
+            List<String> list = new ArrayList<>();
+            visitSubject(streamName, readSubjectFilters, DeliverPolicy.LastPerSubject, true, false, m -> {
+                KeyValueOperation op = getOperation(m.getHeaders());
+                if (op == KeyValueOperation.PUT) {
+                    list.add(new BucketAndKey(m).key);
+                }
+            });
+            return list;
+        });
     }
 
     @Override
     public Future<List<KeyValueEntry>> history(String key) {
-        final Promise<List<KeyValueEntry>> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                validateNonWildcardKvKeyRequired(key);
-                List<KeyValueEntry> list = new ArrayList<>();
-                visitSubject(streamName, readSubject(key), DeliverPolicy.All, false, true, m -> list.add(new KeyValueEntry(m)));
-                promise.complete(list);
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+        return executeUnorderedBlocking(() -> {
+            validateNonWildcardKvKeyRequired(key);
+            List<KeyValueEntry> list = new ArrayList<>();
+            visitSubject(streamName, readSubject(key), DeliverPolicy.All, false, true,
+                m -> list.add(new KeyValueEntry(m)));
+            return list;
+        });
     }
 
     @Override
@@ -302,68 +274,55 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
 
     @Override
     public Future<Void> purgeDeletes(KeyValuePurgeOptions options) {
-        final Promise<Void> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                long dmThresh = options == null
-                    ? KeyValuePurgeOptions.DEFAULT_THRESHOLD_MILLIS
-                    : options.getDeleteMarkersThresholdMillis();
+        return executeUnorderedBlocking(() -> {
+            long dmThresh = options == null
+                ? KeyValuePurgeOptions.DEFAULT_THRESHOLD_MILLIS
+                : options.getDeleteMarkersThresholdMillis();
 
-                ZonedDateTime limit;
-                if (dmThresh < 0) {
-                    limit = DateTimeUtils.fromNow(600000); // long enough in the future to clear all
-                }
-                else if (dmThresh == 0) {
-                    limit = DateTimeUtils.fromNow(KeyValuePurgeOptions.DEFAULT_THRESHOLD_MILLIS);
-                }
-                else {
-                    limit = DateTimeUtils.fromNow(-dmThresh);
-                }
-
-                List<String> keep0List = new ArrayList<>();
-                List<String> keep1List = new ArrayList<>();
-                visitSubject(streamName, streamSubject, DeliverPolicy.LastPerSubject, true, false, m -> {
-                    KeyValueEntry kve = new KeyValueEntry(m);
-                    if (kve.getOperation() != KeyValueOperation.PUT) {
-                        if (kve.getCreated().isAfter(limit)) {
-                            keep1List.add(new BucketAndKey(m).key);
-                        }
-                        else {
-                            keep0List.add(new BucketAndKey(m).key);
-                        }
-                    }
-                });
-
-                for (String key : keep0List) {
-                    jsm.purgeStream(streamName, PurgeOptions.subject(readSubject(key)));
-                }
-
-                for (String key : keep1List) {
-                    PurgeOptions po = PurgeOptions.builder()
-                        .subject(readSubject(key))
-                        .keep(1)
-                        .build();
-                    jsm.purgeStream(streamName, po);
-                }
-                promise.complete();
-            } catch (Exception e) {
-                handleException(promise, e);
+            ZonedDateTime limit;
+            if (dmThresh < 0) {
+                limit = DateTimeUtils.fromNow(600000); // long enough in the future to clear all
             }
-        }, false);
-        return promise.future();
+            else if (dmThresh == 0) {
+                limit = DateTimeUtils.fromNow(KeyValuePurgeOptions.DEFAULT_THRESHOLD_MILLIS);
+            }
+            else {
+                limit = DateTimeUtils.fromNow(-dmThresh);
+            }
+
+            List<String> keep0List = new ArrayList<>();
+            List<String> keep1List = new ArrayList<>();
+            visitSubject(streamName, streamSubject, DeliverPolicy.LastPerSubject, true, false, m -> {
+                KeyValueEntry kve = new KeyValueEntry(m);
+                if (kve.getOperation() != KeyValueOperation.PUT) {
+                    if (kve.getCreated().isAfter(limit)) {
+                        keep1List.add(new BucketAndKey(m).key);
+                    }
+                    else {
+                        keep0List.add(new BucketAndKey(m).key);
+                    }
+                }
+            });
+
+            for (String key : keep0List) {
+                jsm.purgeStream(streamName, PurgeOptions.subject(readSubject(key)));
+            }
+
+            for (String key : keep1List) {
+                PurgeOptions po = PurgeOptions.builder()
+                    .subject(readSubject(key))
+                    .keep(1)
+                    .build();
+                jsm.purgeStream(streamName, po);
+            }
+
+            return null;
+        });
     }
 
     @Override
     public Future<KeyValueStatus> getStatus() {
-        final Promise<KeyValueStatus> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                promise.complete(new KeyValueStatus(jsm.getStreamInfo(streamName)));
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+        return executeUnorderedBlocking(() -> new KeyValueStatus(jsm.getStreamInfo(streamName)));
     }
 
     private PublishAck _publish(String key, byte[] d, Headers h) throws IOException, JetStreamApiException {
@@ -372,46 +331,25 @@ public class NatsVertxKeyValueImpl extends NatsImpl implements NatsVertxKeyValue
         return js.publish(m);
     }
 
-    private Future<Long> publishReturnSequence(String key, byte[] data, Headers h) {
-        final Promise<Long> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                PublishAck pa = _publish(key, data, h);
-                promise.complete(pa.getSeqno());
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+    private Future<Long> publishData(String key, byte[] data, Headers h) {
+        return executeUnorderedBlocking(() -> _publish(key, data, h).getSeqno());
     }
 
-    private Future<Void> publishReturnVoid(String key, byte[] data, Headers h) {
-        final Promise<Void> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                _publish(key, data, h);
-                promise.complete();
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+    private Future<Void> publishCommand(String key, Headers h) {
+        return executeUnorderedBlocking(() -> {
+            _publish(key, null, h);
+            return null;
+        });
     }
 
+    @SuppressWarnings("SameParameterValue")
     Future<KeyValueEntry> _getFuture(String key, Long revision, boolean existingOnly) {
-        final Promise<KeyValueEntry> promise = context().promise();
-        context().executeBlocking(event -> {
-            try {
-                validateNonWildcardKvKeyRequired(key);
-                KeyValueEntry kve = revision == null
-                    ? _getLastEntry(key, existingOnly)
-                    : _getRevisionEntry(key, revision, existingOnly);
-                promise.complete(kve);
-            } catch (Exception e) {
-                handleException(promise, e);
-            }
-        }, false);
-        return promise.future();
+        return executeUnorderedBlocking(() -> {
+            validateNonWildcardKvKeyRequired(key);
+            return revision == null
+                ? _getLastEntry(key, existingOnly)
+                : _getRevisionEntry(key, revision, existingOnly);
+        });
     }
 
     private KeyValueEntry resolveExistingOnly(KeyValueEntry kve, boolean existingOnly) {

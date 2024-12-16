@@ -309,4 +309,9 @@ public class NatsStreamImpl extends NatsImpl implements NatsStream {
         }, false);
         return promise.future();
     }
+
+    public void handleException(Promise<?> promise, Exception e) {
+        promise.fail(e);
+        exceptionHandler.get().handle(e);
+    }
 }

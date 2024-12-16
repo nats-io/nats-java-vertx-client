@@ -4,16 +4,14 @@ import io.nats.client.*;
 import io.nats.client.api.AckPolicy;
 import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.DeliverPolicy;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.impl.ContextInternal;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -56,7 +54,6 @@ public class NatsImpl {
         }
         this.vertx = vertx;
         this.exceptionHandler.set(exceptionHandler);
-
     }
 
     public ContextInternal context() {
@@ -69,9 +66,16 @@ public class NatsImpl {
         handler.handle(promise.future());
     }
 
-    public void handleException(Promise<?> promise, Exception e) {
-        promise.fail(e);
-        exceptionHandler.get().handle(e);
+    public <T> Future<T> executeUnorderedBlocking(Callable<T> callable) {
+        return context().executeBlocking(() -> {
+            try {
+                return callable.call();
+            }
+            catch (Exception e) {
+                exceptionHandler.get().handle(e);
+                throw e;
+            }
+        }, false);
     }
 
     protected void visitSubject(String streamName, String subject, DeliverPolicy deliverPolicy, boolean headersOnly, boolean ordered, MessageHandler handler) throws IOException, JetStreamApiException {
