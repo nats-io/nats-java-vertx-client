@@ -63,16 +63,26 @@ public interface NatsStream extends WriteStream<Message> {
      * @param subject The subject of the stream.
      * @param handler The message handler to listen to messages from the stream.
      * @param autoAck Specify if message handler should auto acknowledge.
-     * @param so The PushSubscribeOptions
      * @return future that returns status of subscription.
      */
     Future<Void> subscribe(
-            String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so);
+        String subject, Handler<NatsVertxMessage> handler, boolean autoAck);
 
     /**
      * Subscribe to JetStream stream
      * @param subject The subject of the stream.
-     * @param queue The queue name to share messages accross consumers with the same queue name.
+     * @param handler The message handler to listen to messages from the stream.
+     * @param autoAck Specify if message handler should auto acknowledge.
+     * @param so The PushSubscribeOptions
+     * @return future that returns status of subscription.
+     */
+    Future<Void> subscribe(
+        String subject, Handler<NatsVertxMessage> handler, boolean autoAck, PushSubscribeOptions so);
+
+    /**
+     * Subscribe to JetStream stream
+     * @param subject The subject of the stream.
+     * @param queue The queue name to share messages across consumers with the same queue name.
      * @param handler The message handler to listen to messages from the stream.
      * @param autoAck Specify if message handler should auto acknowledge.
      * @param so The PushSubscribeOptions
@@ -172,7 +182,6 @@ public interface NatsStream extends WriteStream<Message> {
      */
     Future<PublishAck> publish(String subject, Headers headers, byte[] body, PublishOptions options);
 
-
     /**
      * Retrieve a message from the subscription.
      * @param subject subject The subject for the subscription.
@@ -223,5 +232,4 @@ public interface NatsStream extends WriteStream<Message> {
     default Future<Iterator<NatsVertxMessage>> iterate(final String subject, final int batchSize, final Duration maxWait) {
         return iterate(subject, batchSize, maxWait.toMillis());
     }
-
 }
