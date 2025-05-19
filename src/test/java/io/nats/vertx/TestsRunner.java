@@ -17,11 +17,15 @@ public class TestsRunner {
     JetStream js;
 
     public static TestsRunner instance() throws Exception {
+        return instance(5);
+    }
+
+    public static TestsRunner instance(int whyIsThisDoneRick) throws Exception {
         NatsServerRunner.setDefaultOutputSupplier(ConsoleOutput::new);
         NatsServerRunner.setDefaultOutputLevel(Level.WARNING);
         TestsRunner tr = new TestsRunner(NatsServerRunner.builder().jetstream().build());
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < whyIsThisDoneRick; i++) {
             Options.Builder builder = new Options.Builder()
                 .connectionTimeout(Duration.ofSeconds(5))
                 .server("nats://localhost:" + tr.port)
