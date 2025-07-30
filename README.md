@@ -17,23 +17,86 @@ the Vert.x event-driven framework and provides an asynchronous, non-blocking API
 
 ## Using the Vert.x NATS client
 
-To use this component, add the following dependency to the dependencies section of your build descriptor:
+### Gradle
 
-#### Maven (in your `pom.xml`):
+The NATS client is available in the Maven central repository, and can be imported as a standard dependency in your `build.gradle` file:
 
+```groovy
+dependencies {
+    implementation 'io.nats:nats-vertx-interface:{major.minor.patch}'
+}
+```
+
+If you need the latest and greatest before Maven central updates, you can use:
+
+```groovy
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repo1.maven.org/maven2/"
+    }
+}
+```
+
+If you need a snapshot version, you must add the url for the snapshots and change your dependency.
+
+```groovy
+repositories {
+    mavenCentral()
+    maven {
+        url "https://central.sonatype.com/repository/maven-snapshots"
+    }
+}
+
+dependencies {
+   implementation 'io.nats:nats-vertx-interface:{major.minor.patch}-SNAPSHOT'
+}
+```
+
+### Using Maven
+
+The NATS client is available on the Maven Central Repository and can be imported as a normal dependency in your pom.xml file:
 
 ```xml
 <dependency>
-  <groupId>io.nats</groupId>
-  <artifactId>nats-vertx-interface</artifactId>
-  <version>${maven.version}</version>
+    <groupId>io.nats</groupId>
+    <artifactId>nats-vertx-interface</artifactId>
+    <version>{major.minor.patch}</version>
 </dependency>
 ```
 
-#### Gradle (in your `build.gradle` file):
+If you need the absolute latest, before it propagates to maven central, you can use the repository:
 
+```xml
+<repositories>
+    <repository>
+        <id>sonatype releases</id>
+        <url>https://repo1.maven.org/maven2/</url>
+        <releases>
+           <enabled>true</enabled>
+        </releases>
+    </repository>
+</repositories>
 ```
-compile io.nats:nats-vertx-interface:${maven.version}
+
+If you need a snapshot version, you must enable snapshots and change your dependency.
+
+```xml
+<repositories>
+    <repository>
+        <id>sonatype snapshots</id>
+        <url>https://central.sonatype.com/repository/maven-snapshots</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>io.nats</groupId>
+    <artifactId>nats-vertx-interface</artifactId>
+    <version>{major.minor.patch}-SNAPSHOT</version>
+</dependency>
 ```
 
 ## Connecting to NATS
