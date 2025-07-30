@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 /** Holds the NATS options. */
 public class NatsOptions {
     public static final Duration DEFAULT_NEXT_TIMEOUT = Duration.ofNanos(1);
-    public static final long DEFAULT_MESSAGE_DELAY_MILLIS = 100;
+    public static final long DEFAULT_NO_MESSAGE_DELAY_MILLIS = 100;
 
     private Options.Builder natsBuilder;
     private Vertx vertx;
@@ -22,7 +22,7 @@ public class NatsOptions {
     private long periodicFlushInterval;
     private VertxOptions vertxOptions;
     private Duration nextTimeout = DEFAULT_NEXT_TIMEOUT;
-    private long noMessageDelayMillis = DEFAULT_MESSAGE_DELAY_MILLIS;
+    private long noMessageDelayMillis = DEFAULT_NO_MESSAGE_DELAY_MILLIS;
 
     private Handler<Throwable> exceptionHandler;
 
@@ -159,7 +159,7 @@ public class NatsOptions {
 
     public NatsOptions noMessageDelayMillis(long noMessageDelayMillis) {
         this.noMessageDelayMillis = noMessageDelayMillis < 1
-            ? DEFAULT_MESSAGE_DELAY_MILLIS
+            ? DEFAULT_NO_MESSAGE_DELAY_MILLIS
             : noMessageDelayMillis;
         return this;
     }
