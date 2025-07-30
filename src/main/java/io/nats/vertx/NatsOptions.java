@@ -9,14 +9,20 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 /** Holds the NATS options. */
 public class NatsOptions {
+    public static final Duration DEFAULT_NEXT_TIMEOUT = Duration.ofNanos(1);
+    public static final long DEFAULT_MESSAGE_DELAY_MILLIS = 100;
+
     private Options.Builder natsBuilder;
     private Vertx vertx;
     private boolean periodicFlush;
     private long periodicFlushInterval;
     private VertxOptions vertxOptions;
+    private Duration nextTimeout = DEFAULT_NEXT_TIMEOUT;
+    private long noMessageDelayMillis = DEFAULT_MESSAGE_DELAY_MILLIS;
 
     private Handler<Throwable> exceptionHandler;
 
@@ -122,6 +128,39 @@ public class NatsOptions {
 
     public NatsOptions setPeriodicFlushInterval(long periodicFlushInterval) {
         this.periodicFlushInterval = periodicFlushInterval;
+        return this;
+    }
+
+    public Duration getNextTimeout() {
+        return nextTimeout;
+    }
+
+    public NatsOptions nextTimeout(Duration nextTimeout) {
+        if (nextTimeout == null || nextTimeout.toNanos() < 1 || nextTimeout.isNegative()) {
+            this.nextTimeout = DEFAULT_NEXT_TIMEOUT;
+        }
+        else {
+            this.nextTimeout = nextTimeout;
+        }
+        return this;
+    }
+
+    public NatsOptions nextTimeout(long nextTimeout, TimeUnit timeUnit) {
+        long nanos = timeUnit.toNanos(nextTimeout);
+        this.nextTimeout = nanos < 1
+            ? DEFAULT_NEXT_TIMEOUT
+            : Duration.ofNanos(nanos);
+        return this;
+    }
+
+    public long getNoMessageDelayMillis() {
+        return noMessageDelayMillis;
+    }
+
+    public NatsOptions noMessageDelayMillis(long noMessageDelayMillis) {
+        this.noMessageDelayMillis = noMessageDelayMillis < 1
+            ? DEFAULT_MESSAGE_DELAY_MILLIS
+            : noMessageDelayMillis;
         return this;
     }
 

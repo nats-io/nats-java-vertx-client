@@ -23,8 +23,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * NATS Client implementation.
  */
 public class NatsClientImpl implements NatsClient {
-    private static final Duration NO_WAIT = Duration.ofNanos(1);
-
     private final Vertx vertx;
     private final boolean periodicFlush;
     private final AtomicReference<Connection> connection;
@@ -34,7 +32,21 @@ public class NatsClientImpl implements NatsClient {
     private final AtomicReference<Handler<Throwable>> exceptionHandler;
 
     private final long periodicFlushInterval;
-    private final ConcurrentHashMap<String, Subscription> subscriptionMap;
+    private final ConcurrentHashMap<String, SubscriptionPromise> subscriptionMap;
+    private final Duration nextTimeout;
+    private final long noMessageDelay;
+
+    /* inner */ class SubscriptionPromise {
+        final Subscription sub;
+        final Promise<Void> promise;
+        final Future<Void> future;
+
+        public SubscriptionPromise(Subscription sub) {
+            this.sub = sub;
+            promise = context().promise();
+            future = promise.future();
+        }
+    }
 
     /**
      * Create new client implementation.
@@ -46,6 +58,8 @@ public class NatsClientImpl implements NatsClient {
         periodicFlush = natsOptions.isPeriodicFlush();
         connection = new AtomicReference<>();
         periodicFlushInterval = natsOptions.getPeriodicFlushInterval();
+        nextTimeout = natsOptions.getNextTimeout();
+        noMessageDelay = natsOptions.getNoMessageDelayMillis();
         subscriptionMap = new ConcurrentHashMap<>();
 
         config.dispatcherFactory(new VertxDispatcherFactory(vertx));
@@ -480,14 +494,12 @@ public class NatsClientImpl implements NatsClient {
 
     @Override
     public Future<Void> subscribe(String subject, Handler<Message> handler) {
-
         final Promise<Void> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-
-                final Subscription subscribe = connection.get().subscribe(subject);
-                subscriptionMap.put(subject, subscribe);
-                context().executeBlocking(event1 -> drainSubscription(handler, subscribe, subject));
+                SubscriptionPromise sp = new SubscriptionPromise(connection.get().subscribe(subject));
+                subscriptionMap.put(subject, sp);
+                context().executeBlocking(event1 -> readMessagesUntilUnsubscribed(handler, sp, subject), false);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -496,19 +508,24 @@ public class NatsClientImpl implements NatsClient {
         return promise.future();
     }
 
-    private void drainSubscription(Handler<Message> handler, final Subscription subscribe, final String subject) {
+    private void readMessagesUntilUnsubscribed(Handler<Message> handler, final SubscriptionPromise sp, final String subject) {
         try {
-            Message message = subscribe.nextMessage(NO_WAIT);
-            while (message!=null) {
+            while (!sp.future.isComplete()) {
+                Message message = sp.sub.nextMessage(nextTimeout);
+                if (message == null) {
+                    if (!sp.future.isComplete()) {
+                        context().setTimer(noMessageDelay,
+                            event -> context().executeBlocking(
+                                e -> readMessagesUntilUnsubscribed(handler, sp, subject), false));
+                    }
+                    return;
+                }
                 try {
                     handler.handle(message);
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     exceptionHandler.get().handle(e);
                 }
-                message = subscribe.nextMessage(NO_WAIT);
-            }
-            if (subscriptionMap.containsKey(subject)) {
-                context().setTimer(100, event -> context().executeBlocking(e -> drainSubscription(handler, subscribe, subject), false));
             }
         } catch (Exception e) {
             exceptionHandler.get().handle(e);
@@ -520,9 +537,9 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-                final Subscription subscribe = connection.get().subscribe(subject, queue);
-                subscriptionMap.put(subject, subscribe);
-                context().executeBlocking(event1 -> drainSubscription(handler, subscribe, subject), false);
+                SubscriptionPromise sp = new SubscriptionPromise(connection.get().subscribe(subject, queue));
+                subscriptionMap.put(subject, sp);
+                context().executeBlocking(event1 -> readMessagesUntilUnsubscribed(handler, sp, subject), false);
                 promise.complete();
             } catch (Exception e) {
                 handleException(promise, e);
@@ -536,11 +553,10 @@ public class NatsClientImpl implements NatsClient {
         final Promise<Void> promise = context().promise();
         context().executeBlocking(event -> {
             try {
-
-                final Subscription subscription = subscriptionMap.get(subject);
-                if (subscription!=null) {
-                    subscriptionMap.remove(subject);
-                    subscription.unsubscribe();
+                SubscriptionPromise sp = subscriptionMap.remove(subject);
+                if (sp != null) {
+                    sp.promise.complete();
+                    sp.sub.unsubscribe();
                 }
                 promise.complete();
             } catch (Exception e) {
