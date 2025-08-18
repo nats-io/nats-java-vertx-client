@@ -2,7 +2,7 @@ name: Build PR
 
 on:
   pull_request:
-    types: [opened, synchronize, edited, reopened]
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
