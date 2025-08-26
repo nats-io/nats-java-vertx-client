@@ -30,7 +30,7 @@ public class VertxDispatcherMessageQueue extends MessageQueue {
     boolean push(NatsMessage msg) {
         NatsSubscription sub = msg.getNatsSubscription();
         if (sub != null && sub.isActive()) {
-            MessageHandler handler = dispatcher.subscriptionHandlers.get(sub.getSID());
+            MessageHandler handler = dispatcher.nonDefaultHandlerBySid.get(sub.getSID());
             if (handler == null) {
                 handler = dispatcher.defaultHandler;
             }
