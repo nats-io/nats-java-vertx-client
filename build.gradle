@@ -10,7 +10,7 @@ plugins {
 
 }
 
-def jarVersion = "2.2.2"
+def jarVersion = "2.2.3"
 group = 'io.nats'
 
 def isRelease = System.getenv("BUILD_EVENT") == "release"
