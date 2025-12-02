@@ -1,4 +1,4 @@
-package io.nats.vertx;
+package io.nats.vertx.examples;
 
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 
-public class JetStreamClusterMain {
+public class JetStreamCluster {
 
     private static final String SUBJECT_NAME = "mytest5";
     private static final AtomicBoolean stop = new AtomicBoolean();
@@ -24,7 +24,6 @@ public class JetStreamClusterMain {
     public static void main (String... args) throws  Exception {
         final JetStream jetStreamConsumer = getJetStream();
         final JetStream jetStreamProducer = getJetStream();
-
 
         final Connection connection = getConnection();
 

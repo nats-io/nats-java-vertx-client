@@ -1,10 +1,13 @@
-package io.nats.vertx;
+package io.nats.vertx.examples;
+
+import io.nats.vertx.NatsClient;
+import io.nats.vertx.NatsStream;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
-public class LoadTestPubMain extends LoadTestMain {
+public class LoadTestPub extends LoadTest {
 
 
     public static void main(String[] args) throws Exception {

@@ -1,9 +1,12 @@
-package io.nats.vertx;
+package io.nats.vertx.examples;
 
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
+import io.nats.vertx.NatsClient;
+import io.nats.vertx.NatsOptions;
+import io.nats.vertx.NatsStream;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
@@ -16,7 +19,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class LoadTestMain {
+public class LoadTest {
 
     public final static String SUBJECT_NAME = "loadTestTopic";
 

@@ -1,4 +1,4 @@
-package io.nats.vertx;
+package io.nats.vertx.examples;
 
 import io.nats.client.*;
 import io.nats.client.api.StorageType;
@@ -10,7 +10,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
-public class LoadTestOriginalMain {
+public class LoadTestOriginal {
 
     public final static String SUBJECT_NAME = "loadTestTopic";
 
