@@ -35,7 +35,6 @@ public class NatsOptions {
         return this;
     }
 
-
     /** Get the NATS builder.
      *
      * @return Options.Builder

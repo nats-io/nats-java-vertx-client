@@ -1,11 +1,11 @@
-package io.nats.vertx;
+package io.nats.vertx.examples;
 
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 
 import java.nio.charset.StandardCharsets;
 
-public class LoadTestOriginalPubMain extends LoadTestOriginalMain{
+public class LoadTestOriginalPub extends LoadTestOriginal {
 
 
     public final static byte[] DATA = "0".getBytes(StandardCharsets.UTF_8);
