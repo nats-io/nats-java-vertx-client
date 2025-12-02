@@ -29,8 +29,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * INSTRUCTIONS TO BUILD AND RUN
- * 1. gradlew clean compileJava copyToLib
- * 2. java -cp "build/libs/*;build/classes/java/main" io.nats.vertx.examples.VertxNoResponders
+ * 0. Run a nats-server on the host:port in the example
+ * 1. gradlew clean compileTest compileJava copyToLib
+ * 2. java -cp "build/libs/*;build/classes/java/main;build/classes/java/test" io.nats.vertx.examples.VertxNoResponders
  */
 public class VertxNoResponders {
 
