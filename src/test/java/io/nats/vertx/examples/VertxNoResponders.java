@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * INSTRUCTIONS TO BUILD AND RUN
  * 1. gradlew clean compileJava copyToLib
- * 2. java -cp "build/libs/*;build/classes/java/main" io.nats.client.examples.VertxNoResponders
+ * 2. java -cp "build/libs/*;build/classes/java/main" io.nats.vertx.examples.VertxNoResponders
  */
 public class VertxNoResponders {
 
