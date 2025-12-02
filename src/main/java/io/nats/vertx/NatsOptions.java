@@ -35,6 +35,9 @@ public class NatsOptions {
         return this;
     }
 
+    public static String hexHashCode(Object conn) {
+        return Integer.toHexString(conn.hashCode()).toUpperCase();
+    }
 
     /** Get the NATS builder.
      *

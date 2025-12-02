@@ -33,12 +33,13 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.nats:jnats:2.21.5'
+    implementation 'io.nats:jnats:2.24.1'
     implementation("com.fasterxml.jackson.core:jackson-core:2.19.0")
-    implementation("io.netty:netty-handler:4.2.1.Final")
-    implementation(platform("io.vertx:vertx-stack-depchain:4.5.14"))
-    implementation("io.vertx:vertx-core")
-    implementation("io.netty:netty-resolver-dns-native-macos:4.1.80.Final:osx-x86_64")
+    implementation("io.netty:netty-handler:4.2.7.Final")
+    implementation(platform("io.vertx:vertx-stack-depchain:4.5.22"))
+    implementation("io.vertx:vertx-core:4.5.22")
+    implementation("io.netty:netty-resolver-dns-native-macos:4.2.7.Final")
+
     testImplementation("io.vertx:vertx-junit5")
     testImplementation 'io.nats:jnats-server-runner:2.0.0'
 }
@@ -57,6 +58,7 @@ test {
     }
     maxParallelForks = 1
 }
+
 javadoc {
     options.overview = 'src/main/javadoc/overview.html' // relative to source root
     source = sourceSets.main.allJava
@@ -151,3 +153,7 @@ if (isRelease) {
     }
 }
 
+tasks.register('copyToLib', Copy) {
+    into "build/libs"
+    from configurations.runtimeClasspath
+}

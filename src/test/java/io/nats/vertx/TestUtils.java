@@ -58,16 +58,10 @@ public class TestUtils {
     }
 
     public static NatsClient natsClient(int port, Vertx vertx, Handler<Throwable> exceptionHandler) {
-        final NatsOptions natsOptions = new NatsOptions();
-        natsOptions.setVertx(vertx);
-        natsOptions.setExceptionHandler(exceptionHandler);
-        natsOptions.setNatsBuilder(new Options.Builder().connectionTimeout(Duration.ofSeconds(5)));
-        System.out.println("Client connecting to localhost:" + port);
-        natsOptions.getNatsBuilder().server("localhost:" + port)
-                .connectionListener((conn, type) -> {
-                    System.out.println("Connection EVENT " + type);
+        return natsClient(natsOptions(port, vertx, exceptionHandler));
+    }
 
-                });
+    private static NatsClient natsClient(NatsOptions natsOptions) {
         final NatsClient natsClient = NatsClient.create(natsOptions);
         final Future<Void> connect = natsClient.connect();
 
@@ -96,6 +90,17 @@ public class TestUtils {
         return natsClient;
     }
 
+    public static NatsOptions natsOptions(int port, Vertx vertx, Handler<Throwable> exceptionHandler) {
+        final NatsOptions natsOptions = new NatsOptions();
+        natsOptions.getNatsBuilder().reportNoResponders();
+        natsOptions.setVertx(vertx);
+        natsOptions.setExceptionHandler(exceptionHandler);
+        natsOptions.getNatsBuilder().server("localhost:" + port)
+                .connectionListener((conn, type) -> {
+                    System.out.println("Connection EVENT " + type);
+                });
+        return natsOptions;
+    }
 
 
     public static NatsServerRunner startServer() throws Exception {
