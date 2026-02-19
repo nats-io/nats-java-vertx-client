@@ -48,34 +48,6 @@ public class NatsClientImpl implements NatsClient {
         }
     }
 
-    /* inner */ class PromiseConnectionListener implements ConnectionListener {
-        final Promise<Void> promise;
-        final ConnectionListener userListener;
-        boolean firstConnect;
-
-        public PromiseConnectionListener(ConnectionListener userListener, Promise<Void> promise) {
-            this.promise = promise;
-            this.userListener = userListener;
-            firstConnect = true;
-        }
-
-        @Override
-        public void connectionEvent(Connection conn, Events type, Long time, String uriDetails) {
-            if (firstConnect && type == ConnectionListener.Events.CONNECTED) {
-                firstConnect = false;
-                connection.set(conn);
-                promise.complete();
-            }
-            if (userListener != null) {
-                userListener.connectionEvent(conn, type, time, uriDetails);
-            }
-        }
-
-        @Override
-        public void connectionEvent(Connection conn, Events type) {
-        }
-    }
-
     /**
      * Create new client implementation.
      * @param config config
@@ -148,8 +120,7 @@ public class NatsClientImpl implements NatsClient {
     public Future<Void> connect() {
         context().executeBlocking(event -> {
             try {
-                final Connection conn = Nats.connect(options);
-                onWorkerConnectionEstablished(conn);
+                connection.compareAndSet(null, Nats.connect(options));
             } catch (Exception e) {
                 handleException(connectFuture, e);
             }
@@ -164,27 +135,10 @@ public class NatsClientImpl implements NatsClient {
         return this.connectFuture.future();
     }
 
-    /**
-     * Called on the worker thread after {@code Nats.connect()} returns,
-     * with the established connection. Sets the connection reference.
-     *
-     * <p>Package-private for testing. Tests can subclass and override to
-     * inject a delay between {@code Nats.connect()} returning and
-     * {@code connection.set()} executing, widening the race window between
-     * the callback thread (which completes connectFuture) and this worker
-     * thread.</p>
-     *
-     * @param conn the connection returned by {@code Nats.connect()}
-     */
-    void onWorkerConnectionEstablished(final Connection conn) {
-        connection.set(conn);
-    }
-
     private void runFlush() {
         if (periodicFlush) {
             context().executeBlocking(event -> {
                 try {
-
                     final Connection conn = connection.get();
                     if (conn != null && conn.getStatus() == Connection.Status.CONNECTED) {
                         conn.flush(Duration.ofSeconds(1));

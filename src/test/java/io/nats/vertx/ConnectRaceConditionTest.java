@@ -2,15 +2,21 @@ package io.nats.vertx;
 
 import io.nats.NatsServerRunner;
 import io.nats.client.Connection;
+import io.nats.client.Nats;
 import io.nats.client.Options;
-import io.nats.vertx.impl.DelayedNatsClientImpl;
+import io.nats.vertx.impl.NatsClientImpl;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.ContextInternal;
 import io.vertx.junit5.VertxExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -46,12 +52,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * event loop and an {@code executeBlocking} dispatch before reading
  * {@code connection.get()}, which is enough time for the worker to finish.
  *
- * <p>To deterministically reproduce the race, these tests use
- * {@link DelayedNatsClientImpl}, a test subclass that overrides the
- * package-private {@code onWorkerConnectionEstablished()} hook to inject a
+ * <p>To deterministically reproduce the race, these tests override
+ * {@code NatsClientImpl.connect()} to inject a
  * 200ms delay before the worker thread's {@code connection.set()} call.
  * This widens the race window so the compose chain fires while
  * {@code connection.get()} is still null.</p>
+ *
+ * Since there is limited access, reflection is used. This in itself probably add delay
  *
  * <p>The delay only affects the worker thread path in {@code connect()},
  * not the callback thread path in {@code wireConnectListener()}. This
@@ -69,8 +76,6 @@ import static org.junit.jupiter.api.Assertions.*;
  *       {@code connection.get()} as null (worker is still sleeping), and
  *       NatsImpl's constructor throws NPE. <b>Tests fail.</b></li>
  * </ul>
- *
- * @see DelayedNatsClientImpl
  */
 @ExtendWith(VertxExtension.class)
 public class ConnectRaceConditionTest {
@@ -103,7 +108,7 @@ public class ConnectRaceConditionTest {
     }
 
     /**
-     * Creates a {@link DelayedNatsClientImpl} that delays the worker
+     * Overrides connect and inserts a delay
      * thread's connection.set() by {@link #WORKER_DELAY_MS}.
      */
     private NatsClient createDelayedClient(Vertx vertx) {
@@ -114,8 +119,85 @@ public class ConnectRaceConditionTest {
             .server("nats://localhost:" + port)
             .connectionTimeout(Duration.ofSeconds(5));
 
-        return new DelayedNatsClientImpl(
-            natsOptions.getNatsBuilder(), natsOptions, WORKER_DELAY_MS);
+        return new NatsClientImpl(natsOptions.getNatsBuilder(), natsOptions) {
+            @Override
+            public Future<Void> connect() {
+                ContextInternal context = (ContextInternal) vertx.getOrCreateContext();
+
+                    context.executeBlocking(event -> {
+                    try {
+                        Field field = NatsClientImpl.class.getDeclaredField("connection");
+                        field.setAccessible(true);
+                        AtomicReference<Connection> _connection = (AtomicReference<Connection>) field.get(this);
+
+                        field = NatsClientImpl.class.getDeclaredField("options");
+                        field.setAccessible(true);
+                        Options _options = (Options)field.get(this);
+
+                        Connection connection = Nats.connect(_options);
+                        Thread.sleep(WORKER_DELAY_MS);
+                        _connection.compareAndSet(null, connection);
+
+                    } catch (Exception e) {
+                        Promise<Void> _connectFuture;
+                        try {
+                            Field field = NatsClientImpl.class.getDeclaredField("connectFuture");
+                            field.setAccessible(true);
+                            _connectFuture = (Promise<Void>)field.get(this);
+                        }
+                        catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+
+                        try {
+                            Method method = NatsClientImpl.class.getDeclaredMethod("handleException", Promise.class, Exception.class);
+                            method.setAccessible(true);
+                            method.invoke(this, _connectFuture, e);
+                        }
+                        catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                }, false);
+
+                try {
+                    Field field = NatsClientImpl.class.getDeclaredField("periodicFlush");
+                    field.setAccessible(true);
+                    boolean _periodicFlush = field.getBoolean(this);
+
+                    field = NatsClientImpl.class.getDeclaredField("periodicFlushInterval");
+                    field.setAccessible(true);
+                    long _periodicFlushInterval = field.getLong(this);
+
+                    if (_periodicFlush) {
+                        context.setTimer(_periodicFlushInterval, event -> {
+                            try {
+                                Method method = NatsClientImpl.class.getDeclaredMethod("runFlush");
+                                method.setAccessible(true);
+                                method.invoke(this);
+                            }
+                            catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                    }
+                }
+                catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+                Promise<Void> _connectFuture;
+                try {
+                    Field field = NatsClientImpl.class.getDeclaredField("connectFuture");
+                    field.setAccessible(true);
+                    _connectFuture = (Promise<Void>)field.get(this);
+                    return _connectFuture.future();
+                }
+                catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        } ;
     }
 
     // -- Tests ---------------------------------------------------------------
