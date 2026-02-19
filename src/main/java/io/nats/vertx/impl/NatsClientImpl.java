@@ -48,6 +48,34 @@ public class NatsClientImpl implements NatsClient {
         }
     }
 
+    /* inner */ class PromiseConnectionListener implements ConnectionListener {
+        final Promise<Void> promise;
+        final ConnectionListener userListener;
+        boolean firstConnect;
+
+        public PromiseConnectionListener(ConnectionListener userListener, Promise<Void> promise) {
+            this.promise = promise;
+            this.userListener = userListener;
+            firstConnect = true;
+        }
+
+        @Override
+        public void connectionEvent(Connection conn, Events type, Long time, String uriDetails) {
+            if (firstConnect && type == ConnectionListener.Events.CONNECTED) {
+                firstConnect = false;
+                connection.set(conn);
+                promise.complete();
+            }
+            if (userListener != null) {
+                userListener.connectionEvent(conn, type, time, uriDetails);
+            }
+        }
+
+        @Override
+        public void connectionEvent(Connection conn, Events type) {
+        }
+    }
+
     /**
      * Create new client implementation.
      * @param config config
@@ -79,28 +107,34 @@ public class NatsClientImpl implements NatsClient {
 
     private Options wireConnectListener(final Options.Builder config, final ContextInternal context) {
         final Options build = config.build();
+        final ConnectionListener connectionListener = build.getConnectionListener();
 
         final Promise<Void> promise = context.promise();
+        ConnectionListener compoundListener = new ConnectionListener() {
+            boolean firstConnect = true;
 
-        if (build.getConnectionListener() == null) {
-            config.connectionListener((conn, type) -> {
-                if (type == ConnectionListener.Events.CONNECTED) {
+            @Deprecated
+            @Override
+            public void connectionEvent(Connection conn, Events type) {
+                // in the current iteration of JNats, the other method is called instead of this
+            }
+
+            @Override
+            public void connectionEvent(Connection conn, Events type, Long time, String uriDetails) {
+                if (firstConnect && type == ConnectionListener.Events.CONNECTED) {
+                    firstConnect = false;
                     connection.set(conn);
                     promise.complete();
                 }
-            });
-        }
-        else {
-            final ConnectionListener connectionListener = build.getConnectionListener();
-            config.connectionListener((conn, type) -> {
-                if (type == ConnectionListener.Events.CONNECTED) {
-                    connection.set(conn);
-                    promise.complete();
+                if (connectionListener != null) {
+                    // the ConnectionListener interface has a default implementation for this
+                    // which calls the other version, just in case the user has not implemented this one
+                    connectionListener.connectionEvent(conn, type, time, uriDetails);
                 }
-                connectionListener.connectionEvent(conn, type);
-            });
-        }
+            }
+        };
 
+        config.connectionListener(compoundListener);
         this.connectFuture = promise;
         return config.build();
 
