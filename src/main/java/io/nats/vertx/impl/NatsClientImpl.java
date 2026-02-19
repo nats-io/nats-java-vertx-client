@@ -85,6 +85,7 @@ public class NatsClientImpl implements NatsClient {
         if (build.getConnectionListener() == null) {
             config.connectionListener((conn, type) -> {
                 if (type == ConnectionListener.Events.CONNECTED) {
+                    connection.set(conn);
                     promise.complete();
                 }
             });
@@ -93,6 +94,7 @@ public class NatsClientImpl implements NatsClient {
             final ConnectionListener connectionListener = build.getConnectionListener();
             config.connectionListener((conn, type) -> {
                 if (type == ConnectionListener.Events.CONNECTED) {
+                    connection.set(conn);
                     promise.complete();
                 }
                 connectionListener.connectionEvent(conn, type);
@@ -112,7 +114,8 @@ public class NatsClientImpl implements NatsClient {
     public Future<Void> connect() {
         context().executeBlocking(event -> {
             try {
-                connection.set(Nats.connect(options));
+                final Connection conn = Nats.connect(options);
+                onWorkerConnectionEstablished(conn);
             } catch (Exception e) {
                 handleException(connectFuture, e);
             }
@@ -125,6 +128,22 @@ public class NatsClientImpl implements NatsClient {
         }
 
         return this.connectFuture.future();
+    }
+
+    /**
+     * Called on the worker thread after {@code Nats.connect()} returns,
+     * with the established connection. Sets the connection reference.
+     *
+     * <p>Package-private for testing. Tests can subclass and override to
+     * inject a delay between {@code Nats.connect()} returning and
+     * {@code connection.set()} executing, widening the race window between
+     * the callback thread (which completes connectFuture) and this worker
+     * thread.</p>
+     *
+     * @param conn the connection returned by {@code Nats.connect()}
+     */
+    void onWorkerConnectionEstablished(final Connection conn) {
+        connection.set(conn);
     }
 
     private void runFlush() {
