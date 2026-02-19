@@ -79,28 +79,34 @@ public class NatsClientImpl implements NatsClient {
 
     private Options wireConnectListener(final Options.Builder config, final ContextInternal context) {
         final Options build = config.build();
+        final ConnectionListener connectionListener = build.getConnectionListener();
 
         final Promise<Void> promise = context.promise();
+        ConnectionListener compoundListener = new ConnectionListener() {
+            volatile boolean firstConnect = true;
 
-        if (build.getConnectionListener() == null) {
-            config.connectionListener((conn, type) -> {
-                if (type == ConnectionListener.Events.CONNECTED) {
+            @Deprecated
+            @Override
+            public void connectionEvent(Connection conn, Events type) {
+                // in the current iteration of JNats, the other method is called instead of this
+            }
+
+            @Override
+            public void connectionEvent(Connection conn, Events type, Long time, String uriDetails) {
+                if (firstConnect && type == ConnectionListener.Events.CONNECTED) {
+                    firstConnect = false;
                     connection.set(conn);
                     promise.complete();
                 }
-            });
-        }
-        else {
-            final ConnectionListener connectionListener = build.getConnectionListener();
-            config.connectionListener((conn, type) -> {
-                if (type == ConnectionListener.Events.CONNECTED) {
-                    connection.set(conn);
-                    promise.complete();
+                if (connectionListener != null) {
+                    // the ConnectionListener interface has a default implementation for this
+                    // which calls the other version, just in case the user has not implemented this one
+                    connectionListener.connectionEvent(conn, type, time, uriDetails);
                 }
-                connectionListener.connectionEvent(conn, type);
-            });
-        }
+            }
+        };
 
+        config.connectionListener(compoundListener);
         this.connectFuture = promise;
         return config.build();
 
@@ -112,10 +118,13 @@ public class NatsClientImpl implements NatsClient {
      */
     @Override
     public Future<Void> connect() {
+        // DEVELOPER NOTE!
+        // The ConnectRaceConditionTest class was to test a race condition,
+        // read all about it there. If you make changes to this method
+        // you have to go update the implementation in that class.
         context().executeBlocking(event -> {
             try {
-                final Connection conn = Nats.connect(options);
-                onWorkerConnectionEstablished(conn);
+                connection.compareAndSet(null, Nats.connect(options));
             } catch (Exception e) {
                 handleException(connectFuture, e);
             }
@@ -130,27 +139,10 @@ public class NatsClientImpl implements NatsClient {
         return this.connectFuture.future();
     }
 
-    /**
-     * Called on the worker thread after {@code Nats.connect()} returns,
-     * with the established connection. Sets the connection reference.
-     *
-     * <p>Package-private for testing. Tests can subclass and override to
-     * inject a delay between {@code Nats.connect()} returning and
-     * {@code connection.set()} executing, widening the race window between
-     * the callback thread (which completes connectFuture) and this worker
-     * thread.</p>
-     *
-     * @param conn the connection returned by {@code Nats.connect()}
-     */
-    void onWorkerConnectionEstablished(final Connection conn) {
-        connection.set(conn);
-    }
-
     private void runFlush() {
         if (periodicFlush) {
             context().executeBlocking(event -> {
                 try {
-
                     final Connection conn = connection.get();
                     if (conn != null && conn.getStatus() == Connection.Status.CONNECTED) {
                         conn.flush(Duration.ofSeconds(1));
