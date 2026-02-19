@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * This widens the race window so the compose chain fires while
  * {@code connection.get()} is still null.</p>
  *
- * Since there is limited access, reflection is used. This in itself probably add delay
+ * Since there is limited access, reflection is used. This in itself probably adds delay
  *
  * <p>The delay only affects the worker thread path in {@code connect()},
  * not the callback thread path in {@code wireConnectListener()}. This
@@ -135,7 +135,12 @@ public class ConnectRaceConditionTest {
                         Options _options = (Options)field.get(this);
 
                         Connection connection = Nats.connect(_options);
-                        Thread.sleep(WORKER_DELAY_MS);
+                        try {
+                            Thread.sleep(WORKER_DELAY_MS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw e;
+                        }
                         _connection.compareAndSet(null, connection);
 
                     } catch (Exception e) {
