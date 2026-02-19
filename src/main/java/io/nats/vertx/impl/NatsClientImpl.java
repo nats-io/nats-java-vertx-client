@@ -83,7 +83,7 @@ public class NatsClientImpl implements NatsClient {
 
         final Promise<Void> promise = context.promise();
         ConnectionListener compoundListener = new ConnectionListener() {
-            boolean firstConnect = true;
+            volatile boolean firstConnect = true;
 
             @Deprecated
             @Override
@@ -118,6 +118,10 @@ public class NatsClientImpl implements NatsClient {
      */
     @Override
     public Future<Void> connect() {
+        // DEVELOPER NOTE!
+        // The ConnectRaceConditionTest class was to test a race condition,
+        // read all about it there. If you make changes to this method
+        // you have to go update the implementation in that class.
         context().executeBlocking(event -> {
             try {
                 connection.compareAndSet(null, Nats.connect(options));
